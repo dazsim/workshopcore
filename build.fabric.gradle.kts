@@ -24,6 +24,7 @@ dependencies {
 
 loom {
     fabricModJsonPath = rootProject.file("src/main/resources/fabric.mod.json")
+    if (modern) accessWidenerPath = rootProject.file("src/main/resources/workshopcore.accesswidener")
     runConfigs.all {
         runDirectory = rootProject.file("runs/${sc.current.project}")
     }
@@ -31,6 +32,7 @@ loom {
 
 sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/forge/**")
+    if (!modern) applyOverlays(rootProject.file("."), overlayChain(mc, "fabric"))
 }
 
 java {
@@ -54,6 +56,10 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("fabric.mod.json") { expand(props) }
+        if (!modern) {
+            filesMatching("fabric.mod.json") { filter(StripAccessWidener::class.java) }
+            exclude("workshopcore.accesswidener")
+        }
         exclude("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }

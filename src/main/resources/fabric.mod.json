@@ -8,6 +8,7 @@
         "${author}"
     ],
     "license": "All Rights Reserved",
+    "accessWidener": "workshopcore.accesswidener",
     "environment": "*",
     "entrypoints": {
         "main": [

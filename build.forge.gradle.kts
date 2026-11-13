@@ -12,6 +12,7 @@ base.archivesName = "${property("mod.id")}-forge-$mc"
 
 sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**")
+    applyOverlays(rootProject.file("."), overlayChain(mc, "forge"))
 }
 
 legacyForge {
@@ -54,7 +55,7 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/mods.toml") { expand(props) }
-        exclude("fabric.mod.json", "META-INF/neoforge.mods.toml")
+        exclude("fabric.mod.json", "META-INF/neoforge.mods.toml", "workshopcore.accesswidener")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 

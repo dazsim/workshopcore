@@ -18,6 +18,7 @@ val requiredJava = when {
 
 sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/forge/**")
+    if (!modern) applyOverlays(rootProject.file("."), overlayChain(mc, "neoforge"))
 }
 
 neoForge {
@@ -61,7 +62,7 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/neoforge.mods.toml") { expand(props) }
-        exclude("fabric.mod.json", "META-INF/mods.toml")
+        exclude("fabric.mod.json", "META-INF/mods.toml", "workshopcore.accesswidener")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 

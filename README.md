@@ -2,27 +2,149 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.1.0. The public API has no Minecraft or loader dependencies.
+Mod id: `workshopcore`. Version 0.2.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
 This is a library only. Do not put it in a mods folder on its own; bundle it as shown below.
 
+`WorkshopCore` itself has no Minecraft or loader dependencies. The `compat` package is a version compatibility layer and depends on Minecraft.
+
 ## Public API
 
-Package `com.workshopcraft.workshopcore`. Class `WorkshopCore`:
+### WorkshopCore
+
+Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.1.0"`
+- `API_VERSION` - the API version string, currently `"0.2.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
-Example:
-
 ```java
-if (WorkshopCore.isAtLeast("0.1.0")) {
-    // safe to call 0.1 API
+if (WorkshopCore.isAtLeast("0.2.0")) {
+    // safe to call 0.2 API
 }
 ```
+
+### Version compat layer
+
+Package `com.workshopcraft.workshopcore.compat`, plus `com.workshopcraft.workshopcore.compat.client` for rendering. Use these types on every game version instead of version-specific Minecraft APIs.
+
+#### Registration
+
+Constructors that changed shape between versions:
+
+```java
+BlockEntityType<MyBe> type = Registration.blockEntity(MyBe::new, Set.of(MY_BLOCK));
+RecipeSerializer<MyRecipe> serializer = Registration.serializer(MyRecipe.CODEC, MyRecipe.STREAM_CODEC);
+```
+
+On 1.20.1, `Registration.id(recipe)` / `Registration.withId(id, recipe)` keep recipe ids that the serializer reads from JSON or the network.
+
+`Registration.blockEntity` takes `Registration.BlockEntityFactory`. On 26.x Fabric, Workshop Core ships an access widener so the vanilla `BlockEntityType` constructor is callable; NeoForge already opens it.
+
+#### Saved data
+
+`CodecSavedData` is the SavedData base class. `SavedDataType` holds the id, constructor, codec and data fixer. The id you pass is the storage key: on 26.x it is used as-is, on 1.21.1 and 1.20.1 it becomes `namespace_path`. Do not change an existing id if you need old world files to load.
+
+```java
+public class MyData extends CodecSavedData {
+    public static final Codec<MyData> CODEC = ...;
+    public static final SavedDataType<MyData> TYPE =
+            new SavedDataType<>(new Identifier("mymod", "my_data"), MyData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
+
+    public static MyData get(MinecraftServer server) {
+        return TYPE.get(server); // overworld / server storage
+    }
+
+    public static MyData get(ServerLevel level) {
+        return TYPE.get(level); // that level's storage
+    }
+}
+```
+
+#### Value input and output
+
+`ValueInput` and `ValueOutput` are the stable save/load types. On 26.x they wrap the vanilla objects; on older versions they read and write a `CompoundTag`. Keys you pass are stored unchanged.
+
+```java
+protected void loadAdditional(ValueInput in) {
+    ticks = in.getIntOr("Ticks", 0);
+    in.read("Item", ItemStack.CODEC).ifPresent(s -> item = s);
+}
+
+protected void saveAdditional(ValueOutput out) {
+    out.putInt("Ticks", ticks);
+    out.storeNullable("Item", ItemStack.CODEC, item);
+}
+```
+
+`ItemContainers.loadAllItems` / `saveAllItems` move a list of stacks through those types.
+
+#### Block, block entity and menu wrappers
+
+Extend these instead of the raw Minecraft base classes:
+
+- `CompatBlock` - Block, with split `useItemOn` / `useWithoutItem` and `affectNeighborsAfterRemoval` on older versions
+- `CompatEntityBlock` - BaseEntityBlock, same hooks
+- `CompatBlockEntity` - load/save through `ValueInput` / `ValueOutput`
+- `CompatContainerBlockEntity` - the same, for container block entities
+- `CompatMenu` - includes `addStandardInventorySlots(Inventory, x, y)` on every version
+
+```java
+public class MyBe extends CompatBlockEntity {
+    public MyBe(BlockPos pos, BlockState state) {
+        super(MyBlocks.MY_BE, pos, state);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput in) { /* ... */ }
+
+    @Override
+    protected void saveAdditional(ValueOutput out) { /* ... */ }
+}
+```
+
+On 1.20.1, override `componentStorageKey()` (for example `"SimpleMachines"`) if the block entity stores implicit item components in an existing NBT compound. Leave it null if you do not need that.
+
+#### Players, interactions, chunk tickets
+
+- `Players.overlay(player, message)` - action-bar / overlay text
+- `Players.reach(player)` - block interaction range
+- `Interactions.TRY_WITH_EMPTY_HAND` - from `useItemOn`, meaning "try the empty-hand hook next". On 1.21.1, `Interactions.item(result)` maps that to `ItemInteractionResult`.
+- `ChunkTickets.add(level, pos, radius)` / `remove(...)` - loading and ticking tickets that are not written to the vanilla ticket file. Workshop Core registers the `workshopcore:chunk_loader` type on 26.x; older versions create it themselves.
+
+#### Item helpers
+
+- `Comps.get/set/has/remove/getOrDefault(stack, type)` - item components. On 1.20.1 pass your existing compound key as well, e.g. `Comps.get(stack, "SimpleMachines", type)`, or set `storage("SimpleMachines")` when you build the type. The extra key is ignored on later versions.
+- `Stacks.consume(stack, count, entity)`, `Stacks.hash(stack)`, `Stacks.limit(container, stack)`, `Stacks.OPTIONAL_CODEC`
+
+#### GUI and vertices
+
+- `Gui.blitSprite(graphics, sprite, x, y, w, h)` and the nine-argument form with texture size and UV. On 26.x the graphics type is `GuiGraphicsExtractor`; on older versions it is `GuiGraphics`.
+- `Verts.add(consumer, x, y, z, argb, u, v, overlay, light, nx, ny, nz)`
+
+#### RenderCompat
+
+Package `com.workshopcraft.workshopcore.compat.client`.
+
+- `cutoutBlocks()` / `translucentBlocks()` - block render types
+- `light(level, pos)` - packed light
+- `rotate(pose, quaternion)` - pose rotation
+
+```java
+RenderCompat.rotate(pose, rotation);
+int light = RenderCompat.light(level, pos);
+```
+
+#### 1.20.1-only stand-ins
+
+These exist so 1.20.1 code can keep the later component and network-codec names. On 1.21.1 and 26.x, use the vanilla packages instead (`net.minecraft.core.component`, `net.minecraft.network.codec`).
+
+- `com.workshopcraft.workshopcore.compat.component.DataComponentType` (builder has `storage(key)` and `name(name)`)
+- `com.workshopcraft.workshopcore.compat.component.DataComponentMap` / `DataComponents` (`BLOCK_STATE`, `DYE`)
+- `com.workshopcraft.workshopcore.compat.item.BlockItemStateProperties`
+- `com.workshopcraft.workshopcore.compat.codec.StreamCodec` / `ByteBufCodecs`
 
 ## Maven coordinates
 
@@ -30,22 +152,22 @@ Builds are published to the local Maven folder `/workspace/mods/workshopcore-mav
 
 - Group: `com.workshopcraft.workshopcore`
 - Artifact id: `workshopcore-<loader>-<minecraft>`
-- Version: the library version, for example `0.1.0`
+- Version: the library version, for example `0.2.0`
 
 Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your game version and loader:
 
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.1.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.1.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.2.0`
 
-0.1.0 is published for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not published yet.
+0.2.0 is published for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not published yet.
 
 Repository:
 
@@ -61,8 +183,8 @@ repositories {
 
 ```kotlin
 dependencies {
-    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.1.0")
-    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.1.0")
+    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.2.0")
+    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.2.0")
 }
 ```
 
@@ -77,7 +199,7 @@ dependencies {
     jarJar(implementation("com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2") {
         version {
             strictly("[0.1,1.0)")
-            prefer("0.1.0")
+            prefer("0.2.0")
         }
     })
 }
