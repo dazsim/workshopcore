@@ -1,5 +1,3 @@
-package com.workshopcraft.workshopcore.mixin;
-
-/** 1.21.1 applies haze through ViewportEvent / Fabric fog callbacks instead of FogData. */
+/** 1.21.1 NeoForge applies haze through ViewportEvent; Fabric uses this class from the 1.21.1-fabric overlay. */
 class FogRendererMixin {
 }

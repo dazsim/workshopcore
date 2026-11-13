@@ -299,7 +299,7 @@ Haze.set(player, 0xFF336699, 0.65F, 40);
 Haze.clear(player, 20);
 ```
 
-`set` stores a per-player colour (`ARGB` int), density (`0..1`, clamped), and fade length in ticks, then syncs that state to that player only. Density `0` is the same as `clear`. `clear` drops the server state and fades the client out over the given ticks. The current state is resent with a 0-tick fade on respawn and dimension change, and is dropped on logout. The client interpolates from the current visual to the new target (including mid-fade changes), then tints the fog colour, tightens fog distance with density, and draws a light full-screen tint. On 26.x, fog is applied on both loaders (Fabric mixin on `FogRenderer.setupFog`, NeoForge `ViewportEvent.RenderFog`). On 1.21.1 and 1.20.1, NeoForge and Forge hook `ViewportEvent` for fog planes and colour; Fabric still draws the screen tint, but fog planes and colour are not hooked on those Fabric versions.
+`set` stores a per-player colour (`ARGB` int), density (`0..1`, clamped), and fade length in ticks, then syncs that state to that player only. Density `0` is the same as `clear`. `clear` drops the server state and fades the client out over the given ticks. The current state is resent with a 0-tick fade on respawn and dimension change, and is dropped on logout. The client interpolates from the current visual to the new target (including mid-fade changes), then tints the fog colour, tightens fog distance with density, and draws a light full-screen tint. Fog is applied on both loaders on every target. 26.x Fabric mixins `FogRenderer.setupFog`; 1.21.1 and 1.20.1 Fabric mixin `FogRenderer.setupFog` for distance and `setupColor` for colour (so later `levelFogColor` picks up the haze). NeoForge and Forge hook `ViewportEvent` for fog planes and colour.
 
 ```
 /workshopcore haze set <color> <density> [ticks]
@@ -365,7 +365,7 @@ Default rotation is opt-in through the block tag `workshopcore:screwdriver_rotat
 
 #### Keep-tool recipes
 
-Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On 26.x Fabric the serializer is opted into client recipe sync; that hook is not present on 1.21.1 or 1.20.1. On 1.20.1 the json uses `result.item` instead of `result.id` (Workshop Core rewrites its own screwdriver recipe when it builds that target).
+Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On 26.x Fabric the serializer is opted into `RecipeSynchronization` client recipe sync. That Fabric API does not exist on 1.21.1 or 1.20.1; those versions sync the keep-tool serializer through the vanilla `fromNetwork` / `toNetwork` path once it is registered on both sides. On 1.20.1 the json uses `result.item` instead of `result.id` (Workshop Core rewrites its own screwdriver recipe when it builds that target).
 
 ```json
 {
@@ -415,7 +415,7 @@ These are internal renderer and reload differences only. Calling code that uses 
 
 ### 1.21.1
 
-- `HazeClient` has no `FogData` / `GuiGraphicsExtractor` API. Consumers that hook haze themselves should use `nearPlane`, `farPlane`, `fogRed`, `fogGreen`, `fogBlue`, and `renderTint(GuiGraphics, DeltaTracker)`. Workshop Core already does this on NeoForge via `ViewportEvent` and `RegisterGuiLayersEvent`, and draws the tint on Fabric via `HudRenderCallback`. Fabric 1.21.1 does not hook fog planes or fog colour.
+- `HazeClient` has no `FogData` / `GuiGraphicsExtractor` API. Consumers that hook haze themselves should use `nearPlane`, `farPlane`, `fogRed`, `fogGreen`, `fogBlue`, and `renderTint(GuiGraphics, DeltaTracker)`. Workshop Core already does this on NeoForge via `ViewportEvent` and `RegisterGuiLayersEvent`. Fabric draws the tint via `HudRenderCallback` and hooks fog planes and colour through `FogRenderer.setupFog` / `setupColor` mixins.
 - `KeepToolRecipe` is a `CraftingRecipe` with an `ItemStack` result and `Registration.serializer`, not the 26.x `NormalCraftingRecipe` / `ItemStackTemplate` shape. The recipe id is still `workshopcore:crafting_shapeless_keep_tool`.
 - Commands check `source.hasPermission(2)` instead of `Permissions.COMMANDS_GAMEMASTER`.
 - `Ids.of(ResourceKey)` uses `location()` instead of `identifier()`.

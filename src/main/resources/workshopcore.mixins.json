@@ -11,7 +11,9 @@
     //?}
     "client": [
         "LevelRendererMixin"
-        //? if >=26.1 {
+        //? if fabric && <26.1 {
+        /*, "FogRendererMixin"*/
+        //?} else if >=26.1 {
         , "FogRendererMixin"
         //?}
         //? if >=26.3 {
