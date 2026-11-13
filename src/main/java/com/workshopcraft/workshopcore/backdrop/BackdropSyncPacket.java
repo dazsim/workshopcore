@@ -15,7 +15,7 @@ import java.util.Optional;
 
 /** Server to client: the backdrop id for one dimension, or empty for vanilla, plus transition ticks. */
 public record BackdropSyncPacket(ResourceKey<Level> dimension, Optional<Identifier> id, int transitionTicks) implements CustomPacketPayload {
-    public static final Type<BackdropSyncPacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "backdrop_sync"));
+    public static final Type<BackdropSyncPacket> TYPE = new Type<>(com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "backdrop_sync"));
     public static final StreamCodec<ByteBuf, BackdropSyncPacket> STREAM_CODEC = StreamCodec.composite(
             ResourceKey.streamCodec(Registries.DIMENSION), BackdropSyncPacket::dimension,
             ByteBufCodecs.optional(Identifier.STREAM_CODEC), BackdropSyncPacket::id,

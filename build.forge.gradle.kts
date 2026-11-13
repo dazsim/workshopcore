@@ -11,8 +11,22 @@ group = property("mod.group") as String
 base.archivesName = "${property("mod.id")}-forge-$mc"
 
 sourceSets.main {
-    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/mixin/**")
+    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**")
     applyOverlays(rootProject.file("."), overlayChain(mc, "forge"))
+    resources.srcDir(tasks.register<Data120>("data120") {
+        sources.from(rootProject.file("src/main/resources"))
+        forge = true
+        outputDir = layout.buildDirectory.dir("generated/data120")
+    }.map { it.outputDir })
+}
+
+mixin {
+    add(sourceSets.main.get(), "workshopcore.refmap.json")
+    config("workshopcore.mixins.json")
+}
+
+dependencies {
+    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
 }
 
 legacyForge {
@@ -55,12 +69,20 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/mods.toml") { expand(props) }
-        exclude("fabric.mod.json", "META-INF/neoforge.mods.toml", "workshopcore.accesswidener", "workshopcore.mixins.json")
+        exclude("fabric.mod.json", "META-INF/neoforge.mods.toml", "workshopcore.accesswidener",
+            "assets/workshopcore/items/**", "data/*/recipe/**", "data/*/advancement/**",
+            "data/*/tags/item/**", "data/*/tags/block/**")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
     named("createMinecraftArtifacts") {
         dependsOn("stonecutterGenerate")
+    }
+
+    jar {
+        manifest.attributes(
+            "MixinConfigs" to "workshopcore.mixins.json",
+        )
     }
 
     withType<Jar> {

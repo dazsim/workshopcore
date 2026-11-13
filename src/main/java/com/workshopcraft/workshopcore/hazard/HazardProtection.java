@@ -44,7 +44,7 @@ public final class HazardProtection {
         for (HazardProtectionEntry entry : entries) {
             grouped.computeIfAbsent(entry.hazard(), key -> new java.util.ArrayList<>()).add(entry);
         }
-        Map<Identifier, List<HazardProtectionEntry>> frozen = HashMap.newHashMap(grouped.size());
+        Map<Identifier, List<HazardProtectionEntry>> frozen = new HashMap<>(grouped.size());
         for (var e : grouped.entrySet()) {
             frozen.put(e.getKey(), List.copyOf(e.getValue()));
         }
@@ -155,7 +155,11 @@ public final class HazardProtection {
         for (var e : amounts.entrySet()) {
             ItemStack stack = player.getItemBySlot(e.getKey());
             if (!stack.isEmpty()) {
+                //? if >=1.21 {
                 stack.hurtAndBreak(e.getValue(), player, e.getKey());
+                //?} else {
+                /*stack.hurtAndBreak(e.getValue(), player, p -> p.broadcastBreakEvent(e.getKey()));*/
+                //?}
             }
         }
     }

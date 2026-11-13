@@ -6,11 +6,13 @@ import java.io.StringReader
 class StripLegacyFabricJson(input: Reader) : FilterReader(StringReader(strip(input.readText()))) {
     companion object {
         private val MIXINS = Regex("""(?s),\s*"mixins"\s*:\s*\[.*?\]""")
-        private val FABRIC_API = Regex("""(?m)^\s*"fabric-api"\s*:\s*".*?",?\s*\n""")
+        private val FABRIC_API = Regex(",\\s*\"fabric-api\"\\s*:\\s*\"[^\"]*\"")
         private val ACCESS = Regex("""(?m)^\s*"accessWidener"\s*:\s*".*?",?\s*\n""")
+        private val TRAILING_COMMA = Regex(""",(\s*})""")
 
         fun strip(text: String): String {
             return text.replace(MIXINS, "").replace(FABRIC_API, "").replace(ACCESS, "")
+                .replace(TRAILING_COMMA, "$1")
         }
     }
 }

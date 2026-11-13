@@ -21,7 +21,7 @@ public final class ChunkTickets {
     public static final TicketType TYPE = new TicketType(TicketType.NO_TIMEOUT,
             TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
 
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "chunk_loader");
+    public static final Identifier ID = com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "chunk_loader");
 
     private static final ConcurrentHashMap<Identifier, Owner> OWNERS = new ConcurrentHashMap<>();
 

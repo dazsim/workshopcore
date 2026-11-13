@@ -61,7 +61,7 @@ public class WorkshopCoreNeoForgeClient {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ViewportEvent.RenderFog e) ->
                 com.workshopcraft.workshopcore.hazard.client.HazeClient.apply(e.getFogData(), (float) e.getPartialTick()));
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) ->
-                e.registerBelowAll(net.minecraft.resources.Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "haze"),
+                e.registerBelowAll(com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "haze"),
                         com.workshopcraft.workshopcore.hazard.client.HazeClient::renderTint));
         //?} else {
         /*net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.LevelEvent.Unload e) -> {

@@ -27,7 +27,7 @@ import java.util.Map;
 
 /** Loads data/&lt;ns&gt;/workshopcore/backdrops/*.json and backdrop_defaults.json. */
 public final class BackdropReload extends SimplePreparableReloadListener<BackdropReload.Prepared> {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "backdrops");
+    public static final Identifier ID = com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "backdrops");
     private static final Logger LOGGER = LoggerFactory.getLogger("workshopcore");
     private static final FileToIdConverter BACKDROPS = FileToIdConverter.json("workshopcore/backdrops");
 

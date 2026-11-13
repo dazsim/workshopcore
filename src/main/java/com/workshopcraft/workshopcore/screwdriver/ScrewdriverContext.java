@@ -95,7 +95,11 @@ public final class ScrewdriverContext {
 
     public void ratchet(float pitch) {
         if (!level.isClientSide()) {
+            //? if >=1.21 {
             level.playSound(null, pos, SoundEvents.CROSSBOW_LOADING_MIDDLE.value(), SoundSource.BLOCKS, 0.5F, pitch);
+            //?} else {
+            /*level.playSound(null, pos, SoundEvents.CROSSBOW_LOADING_MIDDLE, SoundSource.BLOCKS, 0.5F, pitch);*/
+            //?}
         }
     }
 

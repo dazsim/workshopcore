@@ -31,7 +31,7 @@ import java.util.List;
  * The kept ingredient must also be listed in "ingredients".
  */
 public class KeepToolRecipe extends NormalCraftingRecipe {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "crafting_shapeless_keep_tool");
+    public static final Identifier ID = com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "crafting_shapeless_keep_tool");
     public static final MapCodec<KeepToolRecipe> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Recipe.CommonInfo.MAP_CODEC.forGetter(o -> o.commonInfo),
             CraftingRecipe.CraftingBookInfo.MAP_CODEC.forGetter(o -> o.bookInfo),

@@ -36,6 +36,13 @@ sourceSets.main {
     if (!modern) {
         applyOverlays(rootProject.file("."), overlayChain(mc, "fabric"))
     }
+    if (sc.current.parsed < "1.21") {
+        resources.srcDir(tasks.register<Data120>("data120") {
+            sources.from(rootProject.file("src/main/resources"))
+            forge = false
+            outputDir = layout.buildDirectory.dir("generated/data120")
+        }.map { it.outputDir })
+    }
 }
 
 java {
@@ -62,6 +69,10 @@ tasks {
         if (!modern) {
             filesMatching("fabric.mod.json") { filter(StripLegacyFabricJson::class.java) }
             exclude("workshopcore.accesswidener")
+        }
+        if (sc.current.parsed < "1.21") {
+            exclude("assets/workshopcore/items/**", "data/*/recipe/**", "data/*/advancement/**",
+                "data/*/tags/item/**", "data/*/tags/block/**")
         }
         exclude("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE

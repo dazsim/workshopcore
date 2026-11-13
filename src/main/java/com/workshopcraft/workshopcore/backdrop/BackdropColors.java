@@ -28,7 +28,11 @@ public final class BackdropColors {
     }
 
     public static int parseOrThrow(String text) {
+        //? if >=1.20.5 {
         return parse(text).getOrThrow();
+        //?} else {
+        /*return parse(text).getOrThrow(false, message -> {});*/
+        //?}
     }
 
     public static String toHex(int argb) {

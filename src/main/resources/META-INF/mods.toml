@@ -20,3 +20,6 @@ mandatory = true
 versionRange = "${minecraft}"
 ordering = "NONE"
 side = "BOTH"
+
+[[mixins]]
+config = "workshopcore.mixins.json"

@@ -2,7 +2,9 @@ package com.workshopcraft.workshopcore.screwdriver;
 
 import com.workshopcraft.workshopcore.WorkshopCore;
 import net.minecraft.core.BlockPos;
+//? if >=26.1 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -27,13 +29,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 public final class Screwdrivers {
-    public static final Identifier ITEM_ID = Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "screwdriver");
+    public static final Identifier ITEM_ID = com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "screwdriver");
     public static final TagKey<Item> SCREWDRIVERS = TagKey.create(Registries.ITEM,
-            Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "screwdrivers"));
+            com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "screwdrivers"));
     public static final TagKey<Block> ROTATABLE = TagKey.create(Registries.BLOCK,
-            Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "screwdriver_rotatable"));
+            com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "screwdriver_rotatable"));
 
     private static final List<HandlerEntry> HANDLERS = new ArrayList<>();
+    private static final List<Identifier> ALIASES = new ArrayList<>();
     private static Item item;
 
     private Screwdrivers() {
@@ -44,6 +47,11 @@ public final class Screwdrivers {
             throw new IllegalStateException("workshopcore:screwdriver is not registered yet");
         }
         return item;
+    }
+
+    /** Old item ids registered through {@link #alias(Identifier)} on Forge 1.20.1, remapped via MissingMappingsEvent. */
+    public static List<Identifier> aliases() {
+        return java.util.Collections.unmodifiableList(ALIASES);
     }
 
     public static boolean isScrewdriver(ItemStack stack) {
@@ -86,7 +94,7 @@ public final class Screwdrivers {
             return;
         }
         //? if fabric {
-        if (BuiltInRegistries.ITEM.containsKey(oldId)) {
+        /*if (BuiltInRegistries.ITEM.containsKey(oldId)) {
             LoggerFactory.getLogger(WorkshopCore.MOD_ID).warn("Screwdrivers.alias skipped {}, already registered", oldId);
             return;
         }
@@ -97,9 +105,11 @@ public final class Screwdrivers {
                 .component(DataComponents.ITEM_MODEL, ITEM_ID)
                 //?}
                 );
-        net.minecraft.core.Registry.register(BuiltInRegistries.ITEM, oldId, alias);
+        net.minecraft.core.Registry.register(BuiltInRegistries.ITEM, oldId, alias);*/
+        //?} else if >=1.21 {
+        BuiltInRegistries.ITEM.addAlias(oldId, ITEM_ID);
         //?} else {
-        /*BuiltInRegistries.ITEM.addAlias(oldId, ITEM_ID);*/
+        /*ALIASES.add(oldId);*/
         //?}
     }
 
@@ -136,7 +146,15 @@ public final class Screwdrivers {
         if (!(stack.getItem() instanceof AliasScrewdriverItem) || item == null) {
             return stack;
         }
+        //? if >=1.21 {
         return stack.transmuteCopy(item);
+        //?} else {
+        /*ItemStack out = new ItemStack(item, stack.getCount());
+        if (stack.hasTag()) {
+            out.setTag(stack.getTag().copy());
+        }
+        return out;*/
+        //?}
     }
 
     public static void registerItem(BiConsumer<Identifier, Item> r) {

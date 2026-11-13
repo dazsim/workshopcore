@@ -14,7 +14,7 @@ import com.mojang.blaze3d.systems.RenderSystem;*/
 /** NeoForge custom skybox used both via dimension attribute and ExtractLevelRenderStateEvent. */
 public final class BackdropSkybox implements CustomSkyboxRenderer {
     public static final BackdropSkybox INSTANCE = new BackdropSkybox();
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("workshopcore", "backdrop");
+    public static final Identifier ID = com.workshopcraft.workshopcore.Ids.of("workshopcore", "backdrop");
 
     private BackdropSkybox() {
     }

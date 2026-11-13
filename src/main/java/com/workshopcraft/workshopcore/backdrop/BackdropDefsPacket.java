@@ -13,7 +13,7 @@ import java.util.Map;
 
 /** Server to client: all loaded backdrop definitions. */
 public record BackdropDefsPacket(Map<Identifier, Backdrop> defs) implements CustomPacketPayload {
-    public static final Type<BackdropDefsPacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "backdrop_defs"));
+    public static final Type<BackdropDefsPacket> TYPE = new Type<>(com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "backdrop_defs"));
     public static final StreamCodec<ByteBuf, BackdropDefsPacket> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.map(HashMap::new, Identifier.STREAM_CODEC, Backdrop.STREAM_CODEC),
             BackdropDefsPacket::defs,

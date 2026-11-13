@@ -17,7 +17,13 @@ public sealed interface BackdropLayer permits
 
     String type();
 
-    Codec<BackdropLayer> CODEC = Codec.STRING.dispatch("type", BackdropLayer::type, BackdropLayer::codecFor);
+    Codec<BackdropLayer> CODEC = Codec.STRING.dispatch("type", BackdropLayer::type,
+            //? if >=1.20.5 {
+            BackdropLayer::codecFor
+            //?} else {
+            /*type -> codecFor(type).codec()*/
+            //?}
+    );
 
     private static MapCodec<? extends BackdropLayer> codecFor(String type) {
         return switch (type.toLowerCase(Locale.ROOT)) {

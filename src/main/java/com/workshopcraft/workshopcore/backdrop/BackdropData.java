@@ -18,7 +18,7 @@ public final class BackdropData extends CodecSavedData {
     ).apply(instance, BackdropData::new));
 
     public static final SavedDataType<BackdropData> TYPE = new SavedDataType<>(
-            Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "backdrop"),
+            com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "backdrop"),
             () -> new BackdropData(Optional.empty(), false),
             CODEC,
             DataFixTypes.LEVEL

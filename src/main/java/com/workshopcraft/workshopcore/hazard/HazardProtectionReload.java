@@ -18,7 +18,7 @@ import java.util.Map;
 
 /** Loads {@code data/<ns>/workshopcore/hazard_protection/*.json} on datapack reload. */
 public final class HazardProtectionReload extends SimplePreparableReloadListener<List<HazardProtectionEntry>> {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "hazard_protection");
+    public static final Identifier ID = com.workshopcraft.workshopcore.Ids.of(WorkshopCore.MOD_ID, "hazard_protection");
     private static final Logger LOGGER = LoggerFactory.getLogger("workshopcore");
     private static final FileToIdConverter FILES = FileToIdConverter.json("workshopcore/hazard_protection");
 

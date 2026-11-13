@@ -19,6 +19,7 @@ stonecutter parameters {
         replace("Identifier", "ResourceLocation")
     }
 
+
     replacements.string(current.parsed >= "26.3") {
         replace("com.mojang.blaze3d.buffers.GpuBufferSlice", "com.mojang.renderpearl.api.buffers.GpuBufferSlice")
         replace("com.mojang.blaze3d.buffers.GpuBuffer", "com.mojang.renderpearl.api.buffers.GpuBuffer")

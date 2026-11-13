@@ -20,10 +20,25 @@ record HazardProtectionEntry(Identifier id, Identifier hazard, List<ItemFilter> 
             EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND
     );
 
-    private static final Codec<EquipmentSlot> SLOT_CODEC = EquipmentSlot.CODEC.validate(slot ->
-            ALLOWED_SLOTS.contains(slot)
-                    ? DataResult.success(slot)
-                    : DataResult.error(() -> "Unsupported protection slot " + slot.getSerializedName()));
+    private static final Codec<EquipmentSlot> SLOT_CODEC =
+            //? if >=1.21 {
+            EquipmentSlot.CODEC.validate(slot ->
+                    ALLOWED_SLOTS.contains(slot)
+                            ? DataResult.success(slot)
+                            : DataResult.error(() -> "Unsupported protection slot " + slot.getSerializedName()));
+            //?} else {
+            /*Codec.STRING.comapFlatMap(name -> {
+                EquipmentSlot slot;
+                try {
+                    slot = EquipmentSlot.byName(name);
+                } catch (IllegalArgumentException exception) {
+                    return DataResult.error(() -> "Unknown protection slot " + name);
+                }
+                return ALLOWED_SLOTS.contains(slot)
+                        ? DataResult.success(slot)
+                        : DataResult.error(() -> "Unsupported protection slot " + name);
+            }, EquipmentSlot::getName);*/
+            //?}
 
     static final Codec<HazardProtectionEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Identifier.CODEC.fieldOf("hazard").forGetter(HazardProtectionEntry::hazard),
@@ -36,7 +51,7 @@ record HazardProtectionEntry(Identifier id, Identifier hazard, List<ItemFilter> 
             ).fieldOf("slots").forGetter(HazardProtectionEntry::slots),
             Wear.CODEC.optionalFieldOf("wear", Wear.DEFAULT).forGetter(entry -> new Wear(entry.amount, entry.intervalTicks))
     ).apply(instance, (hazard, items, slots, wear) -> new HazardProtectionEntry(
-            Identifier.parse("workshopcore:pending"),
+            com.workshopcraft.workshopcore.Ids.of("workshopcore", "pending"),
             hazard,
             List.copyOf(items),
             Set.copyOf(slots),
