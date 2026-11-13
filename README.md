@@ -2,7 +2,7 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.6.0.
+Mod id: `workshopcore`. Version 0.6.1.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
@@ -17,12 +17,12 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.6.0"`
+- `API_VERSION` - the API version string, currently `"0.6.1"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
-if (WorkshopCore.isAtLeast("0.6.0")) {
-    // safe to call 0.6 API
+if (WorkshopCore.isAtLeast("0.6.1")) {
+    // safe to call 0.6.1 API
 }
 ```
 
@@ -158,7 +158,7 @@ These exist so 1.20.1 code can keep the later component and network-codec names.
 
 ### Sky / backdrop renderer
 
-Package `com.workshopcraft.workshopcore.backdrop`. Available on Minecraft 26.1.2 and later. Older version nodes still configure, but this feature is not compiled there yet.
+Package `com.workshopcraft.workshopcore.backdrop`. Available on every target (1.20.1, 1.21.1, 26.1.2, 26.2, 26.3). See Version differences for renderer and packet notes.
 
 A backdrop is a named, data-driven sky. When one is set on a level it replaces the vanilla sun, moon, stars and end sky, and vanilla clouds are hidden. Fog and weather stay vanilla. Clearing the backdrop (or falling back to vanilla) shows clouds again. If nothing is set, the vanilla sky is left alone.
 
@@ -252,7 +252,7 @@ The current id is stored per level with `SavedDataType` under `workshopcore:back
 
 ### Hazards
 
-Package `com.workshopcraft.workshopcore.hazard`. Available on Minecraft 26.1.2 and later, same as backdrops. Older version nodes still configure, but this feature is not compiled there yet.
+Package `com.workshopcraft.workshopcore.hazard`. Available on every target, same as backdrops. See Version differences for haze hook notes.
 
 These helpers are for area hazards such as Simple Void's no-air volumes. Damage types live in the consumer's datapack. Protective gear is data-driven. Haze is a per-player fog and screen tint.
 
@@ -299,7 +299,7 @@ Haze.set(player, 0xFF336699, 0.65F, 40);
 Haze.clear(player, 20);
 ```
 
-`set` stores a per-player colour (`ARGB` int), density (`0..1`, clamped), and fade length in ticks, then syncs that state to that player only. Density `0` is the same as `clear`. `clear` drops the server state and fades the client out over the given ticks. The current state is resent with a 0-tick fade on respawn and dimension change, and is dropped on logout. The client interpolates from the current visual to the new target (including mid-fade changes), then tints the fog colour, tightens fog distance with density, and draws a light full-screen tint. Fog is applied on both loaders (Fabric mixin on `FogRenderer.setupFog`, NeoForge `ViewportEvent.RenderFog`).
+`set` stores a per-player colour (`ARGB` int), density (`0..1`, clamped), and fade length in ticks, then syncs that state to that player only. Density `0` is the same as `clear`. `clear` drops the server state and fades the client out over the given ticks. The current state is resent with a 0-tick fade on respawn and dimension change, and is dropped on logout. The client interpolates from the current visual to the new target (including mid-fade changes), then tints the fog colour, tightens fog distance with density, and draws a light full-screen tint. On 26.x, fog is applied on both loaders (Fabric mixin on `FogRenderer.setupFog`, NeoForge `ViewportEvent.RenderFog`). On 1.21.1 and 1.20.1, NeoForge and Forge hook `ViewportEvent` for fog planes and colour; Fabric still draws the screen tint, but fog planes and colour are not hooked on those Fabric versions.
 
 ```
 /workshopcore haze set <color> <density> [ticks]
@@ -321,7 +321,7 @@ Test helpers, also permission 2, used by the sky test pack:
 
 ### Screwdriver
 
-Package `com.workshopcraft.workshopcore.screwdriver`. Available on Minecraft 26.1.2 and later, same as backdrops and hazards. Older version nodes still configure, but this feature is not compiled there yet.
+Package `com.workshopcraft.workshopcore.screwdriver`. Available on every target, same as backdrops and hazards. See Version differences for alias and keep-tool notes.
 
 Workshop Core registers one shared item, `workshopcore:screwdriver`. It stacks to 1 and has no durability. The recipe is an iron ingot over a stick (`#c:ingots/iron` and `minecraft:stick`). There is no Workshop Core creative tab; consumers should show the item in their own tabs, and `/give @s workshopcore:screwdriver` also works.
 
@@ -365,7 +365,7 @@ Default rotation is opt-in through the block tag `workshopcore:screwdriver_rotat
 
 #### Keep-tool recipes
 
-Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On Fabric the serializer is opted into client recipe sync.
+Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On 26.x Fabric the serializer is opted into client recipe sync; that hook is not present on 1.21.1 or 1.20.1. On 1.20.1 the json uses `result.item` instead of `result.id` (Workshop Core rewrites its own screwdriver recipe when it builds that target).
 
 ```json
 {
@@ -393,13 +393,44 @@ The consumer that used to own the old item id calls `Screwdrivers.alias` during 
 Screwdrivers.alias(Identifier.fromNamespaceAndPath("simplemachines", "screwdriver"));
 ```
 
-On NeoForge this calls `addAlias` on the item registry. Lookups of the old name resolve to `workshopcore:screwdriver` when the old name is not registered, so items already in a world or a chest remap when the world loads.
+On NeoForge (and 1.21.1 NeoForge) this calls `addAlias` on the item registry. Lookups of the old name resolve to `workshopcore:screwdriver` when the old name is not registered, so items already in a world or a chest remap when the world loads. On Forge 1.20.1 there is no `addAlias`; `alias` records the old id and remaps it through `MissingMappingsEvent` when a world with the old item loads.
 
-On Fabric there is no equivalent remap. `alias` registers a hidden item under the old id. It uses the shared name and model, and converts to `workshopcore:screwdriver` when it is in a player's inventory or used. Items sitting in a closed chest keep the old id until taken out. They still work in the hook and in keep-tool recipes if you also list the old id (optional) in `workshopcore:screwdrivers` and `c:tools/screwdriver`.
+On Fabric there is no equivalent remap. `alias` registers a hidden item under the old id. It converts to `workshopcore:screwdriver` when it is in a player's inventory or used. Items sitting in a closed chest keep the old id until taken out. They still work in the hook and in keep-tool recipes if you also list the old id (optional) in `workshopcore:screwdrivers` and `c:tools/screwdriver`. On 26.x the hidden item also uses the shared name and model; on 1.21.1 and 1.20.1 those item properties are not available, so the alias keeps its own id until it converts.
 
 Do not register the old item yourself. If it is already registered, Fabric `alias` logs a warning and does nothing; NeoForge `addAlias` only applies when the old name is absent.
 
 Show `Screwdrivers.item()` in your creative tab, remove your old screwdriver recipe, and point any remaining tag checks at `Screwdrivers.SCREWDRIVERS` or `c:tools/screwdriver`.
+
+
+## Version differences
+
+The public classes and method names are the same on every target. A few signatures, hook mechanisms, and datapack file paths differ where the game API has no equivalent. 26.1.2 behaviour is unchanged from 0.6.0.
+
+### 26.2 and 26.3
+
+These are internal renderer and reload differences only. Calling code that uses `Backdrops`, `Haze`, `HazardProtection`, `HazardDamage`, or `Screwdrivers` does not need to change.
+
+- 26.2 uses newer GPU primitive, buffer-slice, and render-pass APIs inside `BackdropRenderer`.
+- 26.3 moves those rendering types to `com.mojang.renderpearl` packages, uses `pose.rotate` and compiled pipelines, and on Fabric scans backdrop and hazard datapacks through `ResourceScan` because vanilla no longer exposes `SimpleJsonResourceReloadListener.scanDirectory`. Cloud hiding on Fabric 26.3 hooks `CloudRenderer` instead of `LevelRenderer.addCloudsPass`.
+
+### 1.21.1
+
+- `HazeClient` has no `FogData` / `GuiGraphicsExtractor` API. Consumers that hook haze themselves should use `nearPlane`, `farPlane`, `fogRed`, `fogGreen`, `fogBlue`, and `renderTint(GuiGraphics, DeltaTracker)`. Workshop Core already does this on NeoForge via `ViewportEvent` and `RegisterGuiLayersEvent`, and draws the tint on Fabric via `HudRenderCallback`. Fabric 1.21.1 does not hook fog planes or fog colour.
+- `KeepToolRecipe` is a `CraftingRecipe` with an `ItemStack` result and `Registration.serializer`, not the 26.x `NormalCraftingRecipe` / `ItemStackTemplate` shape. The recipe id is still `workshopcore:crafting_shapeless_keep_tool`.
+- Commands check `source.hasPermission(2)` instead of `Permissions.COMMANDS_GAMEMASTER`.
+- `Ids.of(ResourceKey)` uses `location()` instead of `identifier()`.
+- Networking still uses `CustomPacketPayload` and `StreamCodec`. Fabric registers payloads on `PayloadTypeRegistry.playS2C()`, reload listeners on `ResourceManagerHelper`, and world events on `ServerWorldEvents` / `ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD`. NeoForge uses `AddReloadListenerEvent` and `RegisterPayloadHandlersEvent`.
+
+### 1.20.1
+
+Everything in the 1.21.1 list applies, with these further differences:
+
+- There is no `DeltaTracker`. `HazeClient.renderTint` takes `(GuiGraphics, float partialTick)`.
+- Packets keep the same record types, `type()`, and `handle()`, and `BackdropNetworking.setHooks` / `HazeNetworking.setHook` still take `CustomPacketPayload`. Vanilla 1.20.1 has no `CustomPacketPayload` or `StreamCodec`, so Workshop Core ships a stand-in payload type and the packet classes have `write` / `read` (`FriendlyByteBuf`) instead of `STREAM_CODEC`. Forge sends them on a `SimpleChannel`; Fabric sends them with `ServerPlayNetworking` and an `Identifier` plus buffer.
+- `KeepToolRecipe` uses the 1.20.1 serializer shape (`fromJson` / `fromNetwork` / `toNetwork`, `CraftingContainer`, `RegistryAccess`) and carries the recipe id on the recipe.
+- `Screwdrivers.alias` on Forge remaps through `MissingMappingsEvent`. `Screwdrivers.convert` copies count and NBT onto a new stack rather than calling `transmuteCopy`. Gear wear calls `ItemStack.hurtAndBreak` with `broadcastBreakEvent`.
+- Datapack paths are the 1.20.1 names: `data/*/recipes`, `data/*/advancements`, `data/*/tags/items`, `data/*/tags/blocks`. Item model definitions under `assets/*/items/` are not used; the handheld model stays at `assets/workshopcore/models/item/screwdriver.json`. The screwdriver recipe ingredient `#c:ingots/iron` is shipped as a 1.20.1 item tag that also optionally points at `#forge:ingots/iron` and `#c:iron_ingots`.
+- Use `Ids.of(namespace, path)` instead of `Identifier.fromNamespaceAndPath` if you need a version-safe constructor. On 1.20.1 that helper uses `new ResourceLocation` (the static factory is a later Mojang method; Forge 47.4 backports it, Fabric does not). `FileToIdConverter` is also missing on Fabric 1.20.1, so Workshop Core ships a small copy for datapack scans.
 
 ## Maven coordinates
 
@@ -407,22 +438,22 @@ Builds are published to the local Maven folder `/workspace/mods/workshopcore-mav
 
 - Group: `com.workshopcraft.workshopcore`
 - Artifact id: `workshopcore-<loader>-<minecraft>`
-- Version: the library version, for example `0.6.0`
+- Version: the library version, for example `0.6.1`
 
 Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your game version and loader:
 
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.6.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.6.1`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.6.1`
 
-0.6.0 is built for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not built yet. 0.5.0 remains the last published 26.1.2 set until this version is approved.
+0.6.1 is built for all ten targets. 0.6.0 remains the last 26.1.2-only set until this version is approved. The 26.1.2 behaviour is unchanged from 0.6.0.
 
 Repository:
 
@@ -438,8 +469,8 @@ repositories {
 
 ```kotlin
 dependencies {
-    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.0")
-    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.0")
+    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.1")
+    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.1")
 }
 ```
 
@@ -454,7 +485,7 @@ dependencies {
     jarJar(implementation("com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2") {
         version {
             strictly("[0.1,1.0)")
-            prefer("0.6.0")
+            prefer("0.6.1")
         }
     })
 }
