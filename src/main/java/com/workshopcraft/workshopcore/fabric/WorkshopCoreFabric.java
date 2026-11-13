@@ -13,6 +13,7 @@ public class WorkshopCoreFabric implements ModInitializer {
                 com.workshopcraft.workshopcore.compat.ChunkTickets.TYPE);
         initBackdrops();
         initHazards();
+        initScrewdrivers();
         //?}
         LoggerFactory.getLogger(WorkshopCore.MOD_ID).info("Workshop Core {}", WorkshopCore.API_VERSION);
     }
@@ -78,6 +79,24 @@ public class WorkshopCoreFabric implements ModInitializer {
                 (oldPlayer, newPlayer, alive) -> com.workshopcraft.workshopcore.hazard.Haze.resend(newPlayer));
         net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register(
                 (player, origin, destination) -> com.workshopcraft.workshopcore.hazard.Haze.resend(player));
+    }
+
+    private static void initScrewdrivers() {
+        com.workshopcraft.workshopcore.screwdriver.Screwdrivers.registerItem(
+                (id, item) -> net.minecraft.core.Registry.register(net.minecraft.core.registries.BuiltInRegistries.ITEM, id, item));
+        com.workshopcraft.workshopcore.screwdriver.Screwdrivers.registerSerializer(
+                (id, serializer) -> net.minecraft.core.Registry.register(net.minecraft.core.registries.BuiltInRegistries.RECIPE_SERIALIZER, id, serializer));
+        net.fabricmc.fabric.api.recipe.v1.sync.RecipeSynchronization.synchronizeRecipeSerializer(
+                com.workshopcraft.workshopcore.screwdriver.KeepToolRecipe.SERIALIZER);
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
+            var result = com.workshopcraft.workshopcore.screwdriver.Screwdrivers.use(
+                    level, hit.getBlockPos(), player, player.getItemInHand(hand), hand, hit);
+            return switch (result) {
+                case SUCCESS -> net.minecraft.world.InteractionResult.SUCCESS;
+                case FAIL -> net.minecraft.world.InteractionResult.FAIL;
+                case PASS -> net.minecraft.world.InteractionResult.PASS;
+            };
+        });
     }
     //?}
 }

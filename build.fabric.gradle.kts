@@ -34,7 +34,7 @@ loom {
 sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/forge/**")
     if (!modern) {
-        java.exclude("com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/hazard/**", "com/workshopcraft/workshopcore/mixin/**")
+        java.exclude("com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/hazard/**", "com/workshopcraft/workshopcore/screwdriver/**", "com/workshopcraft/workshopcore/mixin/**")
         applyOverlays(rootProject.file("."), overlayChain(mc, "fabric"))
     }
 }

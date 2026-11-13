@@ -2,7 +2,7 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.5.0.
+Mod id: `workshopcore`. Version 0.6.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
@@ -17,12 +17,12 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.5.0"`
+- `API_VERSION` - the API version string, currently `"0.6.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
-if (WorkshopCore.isAtLeast("0.5.0")) {
-    // safe to call 0.5 API
+if (WorkshopCore.isAtLeast("0.6.0")) {
+    // safe to call 0.6 API
 }
 ```
 
@@ -318,18 +318,101 @@ Test helpers, also permission 2, used by the sky test pack:
 
 `protected` reports whether the calling player is protected and does not apply wear. `tick` runs one `HazardProtection.tick` and reports helmet wear. `hurt` calls `HazardDamage.hurt` with the hazard id as the damage type (amount defaults to 1).
 
+
+### Screwdriver
+
+Package `com.workshopcraft.workshopcore.screwdriver`. Available on Minecraft 26.1.2 and later, same as backdrops and hazards. Older version nodes still configure, but this feature is not compiled there yet.
+
+Workshop Core registers one shared item, `workshopcore:screwdriver`. It stacks to 1 and has no durability. The recipe is an iron ingot over a stick (`#c:ingots/iron` and `minecraft:stick`). There is no Workshop Core creative tab; consumers should show the item in their own tabs, and `/give @s workshopcore:screwdriver` also works.
+
+The hook checks the item tag `workshopcore:screwdrivers`, which contains `workshopcore:screwdriver`. The same item is also added to `c:tools/screwdriver`. Workshop Core registers the loader use-block event (Fabric `UseBlockCallback`, NeoForge `PlayerInteractEvent.RightClickBlock`) so sneak-use reaches the handlers.
+
+```java
+if (Screwdrivers.isScrewdriver(stack)) {
+    // the held item is the shared screwdriver, an alias, or another item in the tag
+}
+
+public class MyBlock extends Block implements ScrewdriverTarget {
+    @Override
+    public ScrewdriverResult useScrewdriver(ScrewdriverContext ctx) {
+        if (ctx.isClientSide()) return ScrewdriverResult.SUCCESS;
+        // ctx.sneaking(), ctx.face(), ctx.location(), ctx.player(), ctx.held()
+        ctx.click();
+        ctx.ratchet();
+        ctx.overlay(Component.literal("Toggled"));
+        return ScrewdriverResult.SUCCESS;
+    }
+}
+
+Screwdrivers.register(MyBlocks.CABLE, ctx -> { /* ... */ return ScrewdriverResult.SUCCESS; });
+Screwdrivers.register(MyTags.PIPES, ctx -> { /* ... */ return ScrewdriverResult.PASS; });
+Screwdrivers.register(state -> state.is(otherModBlock), ctx -> ScrewdriverResult.SUCCESS);
+```
+
+A block or its block entity can implement `ScrewdriverTarget`. For blocks the mod does not own, `Screwdrivers.register` takes a block, a block tag, or a `Predicate<BlockState>`. First registered match wins after the interface.
+
+`ScrewdriverContext` holds the level, pos, state, player, held stack, hand, and hit (with `face()` and `location()`), plus `sneaking()` and `isClientSide()`. `click()`, `ratchet()`, and `overlay(Component)` only run on the server. Handlers must run on both sides and only change the world on the server. Return `SUCCESS` on the client too when the click would be handled, so the arm swings. `FAIL` means the click was handled but nothing changed. `PASS` lets the next handler or vanilla try.
+
+Dispatch order:
+
+1. The block implements `ScrewdriverTarget`.
+2. The block entity implements `ScrewdriverTarget`.
+3. The first matching `register` callback.
+4. If the block is in `workshopcore:screwdriver_rotatable`, default rotation.
+5. Otherwise `PASS`.
+
+Default rotation is opt-in through the block tag `workshopcore:screwdriver_rotatable`. Workshop Core ships that tag empty. A use (not sneaking) applies `Rotation.CLOCKWISE_90`; sneak-use applies `COUNTERCLOCKWISE_90`, using `BlockState.rotate`, which covers `FACING`, `AXIS`, stairs and similar. If rotate returns the same state, the hook passes. Do not add blocks that already have their own screwdriver behaviour to this tag.
+
+#### Keep-tool recipes
+
+Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On Fabric the serializer is opted into client recipe sync.
+
+```json
+{
+  "type": "workshopcore:crafting_shapeless_keep_tool",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:book",
+    "#workshopcore:screwdrivers",
+    "#c:ingots/copper"
+  ],
+  "keep": "#workshopcore:screwdrivers",
+  "result": {
+    "id": "simplebooks:guide"
+  }
+}
+```
+
+Consumers should use this type and delete their own keep-tool serializers.
+
+#### Migrating an old screwdriver
+
+The consumer that used to own the old item id calls `Screwdrivers.alias` during init, and must not register that item itself.
+
+```java
+Screwdrivers.alias(Identifier.fromNamespaceAndPath("simplemachines", "screwdriver"));
+```
+
+On NeoForge this calls `addAlias` on the item registry. Lookups of the old name resolve to `workshopcore:screwdriver` when the old name is not registered, so items already in a world or a chest remap when the world loads.
+
+On Fabric there is no equivalent remap. `alias` registers a hidden item under the old id. It uses the shared name and model, and converts to `workshopcore:screwdriver` when it is in a player's inventory or used. Items sitting in a closed chest keep the old id until taken out. They still work in the hook and in keep-tool recipes if you also list the old id (optional) in `workshopcore:screwdrivers` and `c:tools/screwdriver`.
+
+Do not register the old item yourself. If it is already registered, Fabric `alias` logs a warning and does nothing; NeoForge `addAlias` only applies when the old name is absent.
+
+Show `Screwdrivers.item()` in your creative tab, remove your old screwdriver recipe, and point any remaining tag checks at `Screwdrivers.SCREWDRIVERS` or `c:tools/screwdriver`.
+
 ## Maven coordinates
 
 Builds are published to the local Maven folder `/workspace/mods/workshopcore-maven`.
 
 - Group: `com.workshopcraft.workshopcore`
 - Artifact id: `workshopcore-<loader>-<minecraft>`
-- Version: the library version, for example `0.5.0`
+- Version: the library version, for example `0.6.0`
 
 Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your game version and loader:
 
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.5.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.5.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.6.0`
 - `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.4.0`
 - `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.4.0`
 - `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.4.0`
@@ -339,7 +422,7 @@ Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your
 - `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.4.0`
 - `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.4.0`
 
-0.5.0 is built for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not built yet. 0.4.0 remains the last published 26.1.2 set until this version is approved.
+0.6.0 is built for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not built yet. 0.5.0 remains the last published 26.1.2 set until this version is approved.
 
 Repository:
 
@@ -355,8 +438,8 @@ repositories {
 
 ```kotlin
 dependencies {
-    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.5.0")
-    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.5.0")
+    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.0")
+    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.6.0")
 }
 ```
 
@@ -371,7 +454,7 @@ dependencies {
     jarJar(implementation("com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2") {
         version {
             strictly("[0.1,1.0)")
-            prefer("0.5.0")
+            prefer("0.6.0")
         }
     })
 }

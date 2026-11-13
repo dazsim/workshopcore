@@ -15,6 +15,7 @@ public class WorkshopCoreNeoForge {
                                 com.workshopcraft.workshopcore.compat.ChunkTickets.TYPE)));
         initBackdrops(modBus);
         initHazards(modBus);
+        initScrewdrivers(modBus);
         //?}
         LoggerFactory.getLogger(WorkshopCore.MOD_ID).info("Workshop Core {}", WorkshopCore.API_VERSION);
     }
@@ -90,6 +91,26 @@ public class WorkshopCoreNeoForge {
                 com.workshopcraft.workshopcore.hazard.Haze.resend(player);
             }
         });
+    }
+
+    private static void initScrewdrivers(IEventBus modBus) {
+        modBus.addListener((net.neoforged.neoforge.registries.RegisterEvent e) -> {
+            e.register(net.minecraft.core.registries.Registries.ITEM, h ->
+                    com.workshopcraft.workshopcore.screwdriver.Screwdrivers.registerItem((id, item) -> h.register(id, item)));
+            e.register(net.minecraft.core.registries.Registries.RECIPE_SERIALIZER, h ->
+                    com.workshopcraft.workshopcore.screwdriver.Screwdrivers.registerSerializer((id, serializer) -> h.register(id, serializer)));
+        });
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) -> {
+                    var result = com.workshopcraft.workshopcore.screwdriver.Screwdrivers.use(
+                            e.getLevel(), e.getPos(), e.getEntity(), e.getItemStack(), e.getHand(), e.getHitVec());
+                    if (result != com.workshopcraft.workshopcore.screwdriver.ScrewdriverResult.PASS) {
+                        e.setCanceled(true);
+                        e.setCancellationResult(result == com.workshopcraft.workshopcore.screwdriver.ScrewdriverResult.SUCCESS
+                                ? net.minecraft.world.InteractionResult.SUCCESS
+                                : net.minecraft.world.InteractionResult.FAIL);
+                    }
+                });
     }
     //?}
 }
