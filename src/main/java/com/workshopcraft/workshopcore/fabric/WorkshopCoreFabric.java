@@ -12,6 +12,7 @@ public class WorkshopCoreFabric implements ModInitializer {
                 com.workshopcraft.workshopcore.compat.ChunkTickets.ID,
                 com.workshopcraft.workshopcore.compat.ChunkTickets.TYPE);
         initBackdrops();
+        initHazards();
         //?}
         LoggerFactory.getLogger(WorkshopCore.MOD_ID).info("Workshop Core {}", WorkshopCore.API_VERSION);
     }
@@ -55,6 +56,28 @@ public class WorkshopCoreFabric implements ModInitializer {
                 com.workshopcraft.workshopcore.backdrop.BackdropNetworking.sendAssignment(player, level.dimension(), com.workshopcraft.workshopcore.backdrop.Backdrops.get(level));
             }
         });
+    }
+
+    private static void initHazards() {
+        net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.clientboundPlay().register(
+                com.workshopcraft.workshopcore.hazard.HazeSyncPacket.TYPE,
+                com.workshopcraft.workshopcore.hazard.HazeSyncPacket.STREAM_CODEC);
+        com.workshopcraft.workshopcore.hazard.HazeNetworking.setHook(
+                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking::send);
+        net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.SERVER_DATA)
+                .registerReloadListener(com.workshopcraft.workshopcore.hazard.HazardProtectionReload.ID,
+                        new com.workshopcraft.workshopcore.hazard.HazardProtectionReload());
+        net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register(
+                (dispatcher, registry, environment) -> com.workshopcraft.workshopcore.hazard.HazardCommands.register(dispatcher));
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
+                (handler, server) -> {
+                    com.workshopcraft.workshopcore.hazard.Haze.forget(handler.player);
+                    com.workshopcraft.workshopcore.hazard.HazardProtection.clearWear(handler.player);
+                });
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register(
+                (oldPlayer, newPlayer, alive) -> com.workshopcraft.workshopcore.hazard.Haze.resend(newPlayer));
+        net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register(
+                (player, origin, destination) -> com.workshopcraft.workshopcore.hazard.Haze.resend(player));
     }
     //?}
 }

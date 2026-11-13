@@ -4,7 +4,8 @@
     "package": "com.workshopcraft.workshopcore.mixin",
     "compatibilityLevel": "JAVA_25",
     "client": [
-        "LevelRendererMixin"
+        "LevelRendererMixin",
+        "FogRendererMixin"
     ],
     "injectors": {
         "defaultRequire": 1

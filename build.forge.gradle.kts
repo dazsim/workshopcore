@@ -11,7 +11,7 @@ group = property("mod.group") as String
 base.archivesName = "${property("mod.id")}-forge-$mc"
 
 sourceSets.main {
-    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/mixin/**")
+    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/hazard/**", "com/workshopcraft/workshopcore/mixin/**")
     applyOverlays(rootProject.file("."), overlayChain(mc, "forge"))
 }
 

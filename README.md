@@ -2,7 +2,7 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.4.0.
+Mod id: `workshopcore`. Version 0.5.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
@@ -17,12 +17,12 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.4.0"`
+- `API_VERSION` - the API version string, currently `"0.5.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
-if (WorkshopCore.isAtLeast("0.4.0")) {
-    // safe to call 0.4 API
+if (WorkshopCore.isAtLeast("0.5.0")) {
+    // safe to call 0.5 API
 }
 ```
 
@@ -249,18 +249,87 @@ Permission 2, current level. Simple Void can wrap this as `/void backdrop` later
 
 The current id is stored per level with `SavedDataType` under `workshopcore:backdrop`. Backdrop JSON lives in server data packs, so the client is sent the validated definitions (not just ids) on login, on datapack reload, and when a player changes dimension. The current assignment is also sent on set, clear, login, reload, and dimension change. When a level unloads, clients drop the cached assignment for that dimension key so a later runtime dimension with the same key cannot keep a stale sky. Disconnect also clears the client cache.
 
+
+### Hazards
+
+Package `com.workshopcraft.workshopcore.hazard`. Available on Minecraft 26.1.2 and later, same as backdrops. Older version nodes still configure, but this feature is not compiled there yet.
+
+These helpers are for area hazards such as Simple Void's no-air volumes. Damage types live in the consumer's datapack. Protective gear is data-driven. Haze is a per-player fog and screen tint.
+
+#### Damage
+
+Define a damage type at `data/<namespace>/damage_type/<name>.json` (vanilla format). Then:
+
+```java
+ResourceKey<DamageType> type = HazardDamage.key(Identifier.parse("simplevoid:no_air"));
+DamageSource source = HazardDamage.source(level, type);
+boolean applied = HazardDamage.hurt(entity, type, 2.0F);
+```
+
+`source` looks up the type in that level's registry and throws if it is missing. `hurt` applies that source on the server and returns whether damage was applied. It does nothing and returns false if the entity is not on a `ServerLevel`.
+
+#### Protective gear
+
+`data/<namespace>/workshopcore/hazard_protection/<name>.json`. Several files may cover the same hazard.
+
+```json
+{
+  "hazard": "simplevoid:no_air",
+  "items": ["minecraft:iron_helmet", "#minecraft:head_armor"],
+  "slots": ["head", "chest", "legs", "feet", "mainhand", "offhand"],
+  "wear": { "amount": 1, "interval_ticks": 20 }
+}
+```
+
+`items` is a list of item ids or `#tags`. `slots` is one or more of `head`, `chest`, `legs`, `feet`, `mainhand`, `offhand`. `wear` is optional (defaults are amount 1 and 20 ticks).
+
+Files are loaded on datapack reload. The player is protected against a hazard when every slot listed by any file for that hazard has an equipped item accepted by at least one of those files that lists that slot. Adding a file that lists a new slot tightens the requirement. Alternative items for the same slot can be listed together, split across files, or expressed as a tag. A hazard with no loaded files is not protected by gear.
+
+```java
+boolean safe = HazardProtection.isProtected(player, Identifier.parse("simplevoid:no_air"));
+boolean stillSafe = HazardProtection.tick(player, Identifier.parse("simplevoid:no_air"));
+```
+
+`isProtected` only inspects equipment and changes nothing, including in creative or spectator. `tick` is meant to be called once per server tick while the player is exposed. It returns `false` when the player is unprotected. Creative and spectator players skip wear and return `true`. Wear uses one server-side counter per player and hazard. The interval is the minimum `interval_ticks` among files for that hazard. When the interval elapses, each protected slot is damaged by the maximum `amount` among files that both list that slot and accept the equipped item. Items take damage and break the vanilla way. Counters reset when the player is unprotected, logs out, or datapacks reload.
+
+#### Haze
+
+```java
+Haze.set(player, 0xFF336699, 0.65F, 40);
+Haze.clear(player, 20);
+```
+
+`set` stores a per-player colour (`ARGB` int), density (`0..1`, clamped), and fade length in ticks, then syncs that state to that player only. Density `0` is the same as `clear`. `clear` drops the server state and fades the client out over the given ticks. The current state is resent with a 0-tick fade on respawn and dimension change, and is dropped on logout. The client interpolates from the current visual to the new target (including mid-fade changes), then tints the fog colour, tightens fog distance with density, and draws a light full-screen tint. Fog is applied on both loaders (Fabric mixin on `FogRenderer.setupFog`, NeoForge `ViewportEvent.RenderFog`).
+
+```
+/workshopcore haze set <color> <density> [ticks]
+/workshopcore haze clear [ticks]
+```
+
+Permission 2. `color` is `#RRGGBB` or `#AARRGGBB` (the `#` and a `0x` prefix are optional). `density` is `0..1`. `ticks` defaults to 20 and is clamped to 0..1200.
+
+Test helpers, also permission 2, used by the sky test pack:
+
+```
+/workshopcore hazard protected <hazard>
+/workshopcore hazard tick <hazard>
+/workshopcore hazard hurt <hazard> [amount]
+```
+
+`protected` reports whether the calling player is protected and does not apply wear. `tick` runs one `HazardProtection.tick` and reports helmet wear. `hurt` calls `HazardDamage.hurt` with the hazard id as the damage type (amount defaults to 1).
+
 ## Maven coordinates
 
 Builds are published to the local Maven folder `/workspace/mods/workshopcore-maven`.
 
 - Group: `com.workshopcraft.workshopcore`
 - Artifact id: `workshopcore-<loader>-<minecraft>`
-- Version: the library version, for example `0.4.0`
+- Version: the library version, for example `0.5.0`
 
 Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your game version and loader:
 
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.4.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.5.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.5.0`
 - `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.4.0`
 - `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.4.0`
 - `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.4.0`
@@ -270,7 +339,7 @@ Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your
 - `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.4.0`
 - `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.4.0`
 
-0.4.0 is built for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not built yet. 0.3.0 remains the last published 26.1.2 set until this version is approved.
+0.5.0 is built for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not built yet. 0.4.0 remains the last published 26.1.2 set until this version is approved.
 
 Repository:
 
@@ -286,8 +355,8 @@ repositories {
 
 ```kotlin
 dependencies {
-    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.4.0")
-    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.4.0")
+    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.5.0")
+    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.5.0")
 }
 ```
 
@@ -302,7 +371,7 @@ dependencies {
     jarJar(implementation("com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2") {
         version {
             strictly("[0.1,1.0)")
-            prefer("0.4.0")
+            prefer("0.5.0")
         }
     })
 }

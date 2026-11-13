@@ -18,7 +18,7 @@ val requiredJava = when {
 
 sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/forge/**", "com/workshopcraft/workshopcore/mixin/**")
-    if (!modern) java.exclude("com/workshopcraft/workshopcore/backdrop/**")
+    if (!modern) java.exclude("com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/hazard/**")
     if (!modern) applyOverlays(rootProject.file("."), overlayChain(mc, "neoforge"))
 }
 

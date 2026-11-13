@@ -40,7 +40,15 @@ public class WorkshopCoreNeoForgeClient {
                 BackdropClient.drop(level.dimension());
             }
         });
-        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> BackdropClient.clear());
+        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> {
+            BackdropClient.clear();
+            com.workshopcraft.workshopcore.hazard.client.HazeClient.clear();
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ViewportEvent.RenderFog e) ->
+                com.workshopcraft.workshopcore.hazard.client.HazeClient.apply(e.getFogData(), (float) e.getPartialTick()));
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) ->
+                e.registerBelowAll(net.minecraft.resources.Identifier.fromNamespaceAndPath(WorkshopCore.MOD_ID, "haze"),
+                        com.workshopcraft.workshopcore.hazard.client.HazeClient::renderTint));
         //?}
     }
 }
