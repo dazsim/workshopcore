@@ -38,7 +38,8 @@ sourceSets.main {
     }
     if (sc.current.parsed < "1.21") {
         resources.srcDir(tasks.register<Data120>("data120") {
-            sources.from(rootProject.file("src/main/resources"))
+            dependsOn("stonecutterGenerate")
+            sources.from(layout.buildDirectory.dir("generated/stonecutter/main/resources"))
             forge = false
             outputDir = layout.buildDirectory.dir("generated/data120")
         }.map { it.outputDir })
@@ -78,6 +79,7 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
+
     withType<Jar> {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         val name = project.property("mod.name")
@@ -85,6 +87,8 @@ tasks {
         from(rootProject.file("LICENSE")) { rename { "${it}_$name" } }
     }
 }
+
+preferProcessedStonecutterResources(sc.current.isActive)
 
 publishing {
     publications {

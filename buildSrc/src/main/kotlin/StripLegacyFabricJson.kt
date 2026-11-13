@@ -2,17 +2,14 @@ import java.io.FilterReader
 import java.io.Reader
 import java.io.StringReader
 
-/** Drops 26.x-only fabric.mod.json keys (access widener, mixins, fabric-api) for older versions. */
+/** Drops the 26.x-only access widener key from older fabric.mod.json files. Mixins and fabric-api stay. */
 class StripLegacyFabricJson(input: Reader) : FilterReader(StringReader(strip(input.readText()))) {
     companion object {
-        private val MIXINS = Regex("""(?s),\s*"mixins"\s*:\s*\[.*?\]""")
-        private val FABRIC_API = Regex(",\\s*\"fabric-api\"\\s*:\\s*\"[^\"]*\"")
         private val ACCESS = Regex("""(?m)^\s*"accessWidener"\s*:\s*".*?",?\s*\n""")
         private val TRAILING_COMMA = Regex(""",(\s*})""")
 
         fun strip(text: String): String {
-            return text.replace(MIXINS, "").replace(FABRIC_API, "").replace(ACCESS, "")
-                .replace(TRAILING_COMMA, "$1")
+            return text.replace(ACCESS, "").replace(TRAILING_COMMA, "$1")
         }
     }
 }

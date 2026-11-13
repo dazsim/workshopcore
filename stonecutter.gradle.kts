@@ -4,6 +4,10 @@ plugins {
 
 stonecutter active "26.1.2-neoforge"
 
+stonecutter handlers {
+    inherit("java", "json", "toml", "mcmeta")
+}
+
 stonecutter parameters {
     val (version, loader) = current.project.split('-', limit = 2)
 

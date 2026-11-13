@@ -4,7 +4,11 @@
     "has_the_recipe": {
       "trigger": "minecraft:recipe_unlocked",
       "conditions": {
+        //? if >=26.3 {
+        /*"recipes": "workshopcore:screwdriver"*/
+        //?} else {
         "recipe": "workshopcore:screwdriver"
+        //?}
       }
     },
     "has_iron": {
@@ -12,7 +16,15 @@
       "conditions": {
         "items": [
           {
+            //? if >=26.1 {
             "items": "#c:ingots/iron"
+            //?} else if forge {
+            /*"tag": "forge:ingots/iron"*/
+            //?} else if <1.21 {
+            /*"tag": "c:iron_ingots"*/
+            //?} else {
+            /*"items": "#c:ingots/iron"*/
+            //?}
           }
         ]
       }

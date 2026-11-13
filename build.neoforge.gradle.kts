@@ -72,6 +72,7 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
+
     named("createMinecraftArtifacts") {
         dependsOn("stonecutterGenerate")
     }
@@ -83,6 +84,8 @@ tasks {
         from(rootProject.file("LICENSE")) { rename { "${it}_$name" } }
     }
 }
+
+preferProcessedStonecutterResources(sc.current.isActive)
 
 publishing {
     publications {

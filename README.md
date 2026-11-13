@@ -323,7 +323,7 @@ Test helpers, also permission 2, used by the sky test pack:
 
 Package `com.workshopcraft.workshopcore.screwdriver`. Available on every target, same as backdrops and hazards. See Version differences for alias and keep-tool notes.
 
-Workshop Core registers one shared item, `workshopcore:screwdriver`. It stacks to 1 and has no durability. The recipe is an iron ingot over a stick (`#c:ingots/iron` and `minecraft:stick`). There is no Workshop Core creative tab; consumers should show the item in their own tabs, and `/give @s workshopcore:screwdriver` also works.
+Workshop Core registers one shared item, `workshopcore:screwdriver`. It stacks to 1 and has no durability. The recipe is an iron ingot over a stick. On 26.x the key is the string `#c:ingots/iron`; on 1.21.1 it is `{ "tag": "c:ingots/iron" }`; on 1.20.1 Fabric it is `{ "tag": "c:iron_ingots" }` and on 1.20.1 Forge `{ "tag": "forge:ingots/iron" }`. There is no Workshop Core creative tab; consumers should show the item in their own tabs, and `/give @s workshopcore:screwdriver` also works.
 
 The hook checks the item tag `workshopcore:screwdrivers`, which contains `workshopcore:screwdriver`. The same item is also added to `c:tools/screwdriver`. Workshop Core registers the loader use-block event (Fabric `UseBlockCallback`, NeoForge `PlayerInteractEvent.RightClickBlock`) so sneak-use reaches the handlers.
 
@@ -365,7 +365,7 @@ Default rotation is opt-in through the block tag `workshopcore:screwdriver_rotat
 
 #### Keep-tool recipes
 
-Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On 26.x Fabric the serializer is opted into `RecipeSynchronization` client recipe sync. That Fabric API does not exist on 1.21.1 or 1.20.1; those versions sync the keep-tool serializer through the vanilla `fromNetwork` / `toNetwork` path once it is registered on both sides. On 1.20.1 the json uses `result.item` instead of `result.id` (Workshop Core rewrites its own screwdriver recipe when it builds that target).
+Type `workshopcore:crafting_shapeless_keep_tool`. A shapeless recipe plus a `keep` ingredient that is handed back instead of being used up. The kept item must also be listed in `ingredients`. On 26.x Fabric the serializer is opted into `RecipeSynchronization` client recipe sync. That Fabric API does not exist on 1.21.1 or 1.20.1; those versions sync the keep-tool serializer through the vanilla `fromNetwork` / `toNetwork` path once it is registered on both sides. On 26.x the ingredients can be strings (`"minecraft:book"`, `"#workshopcore:screwdrivers"`) and the result uses `id`. On 1.21.1 the same fields must be objects (`{ "item": "minecraft:book" }`, `{ "tag": "workshopcore:screwdrivers" }`) and the result still uses `id`. On 1.20.1 use the same object form, but the result uses `item` instead of `id` (Workshop Core rewrites its own screwdriver recipe when it builds that target).
 
 ```json
 {
@@ -429,7 +429,7 @@ Everything in the 1.21.1 list applies, with these further differences:
 - Packets keep the same record types, `type()`, and `handle()`, and `BackdropNetworking.setHooks` / `HazeNetworking.setHook` still take `CustomPacketPayload`. Vanilla 1.20.1 has no `CustomPacketPayload` or `StreamCodec`, so Workshop Core ships a stand-in payload type and the packet classes have `write` / `read` (`FriendlyByteBuf`) instead of `STREAM_CODEC`. Forge sends them on a `SimpleChannel`; Fabric sends them with `ServerPlayNetworking` and an `Identifier` plus buffer.
 - `KeepToolRecipe` uses the 1.20.1 serializer shape (`fromJson` / `fromNetwork` / `toNetwork`, `CraftingContainer`, `RegistryAccess`) and carries the recipe id on the recipe.
 - `Screwdrivers.alias` on Forge remaps through `MissingMappingsEvent`. `Screwdrivers.convert` copies count and NBT onto a new stack rather than calling `transmuteCopy`. Gear wear calls `ItemStack.hurtAndBreak` with `broadcastBreakEvent`.
-- Datapack paths are the 1.20.1 names: `data/*/recipes`, `data/*/advancements`, `data/*/tags/items`, `data/*/tags/blocks`. Item model definitions under `assets/*/items/` are not used; the handheld model stays at `assets/workshopcore/models/item/screwdriver.json`. The screwdriver recipe ingredient `#c:ingots/iron` is shipped as a 1.20.1 item tag that also optionally points at `#forge:ingots/iron` and `#c:iron_ingots`.
+- Datapack paths are the 1.20.1 names: `data/*/recipes`, `data/*/advancements`, `data/*/tags/items`, `data/*/tags/blocks`. Item model definitions under `assets/*/items/` are not used; the handheld model stays at `assets/workshopcore/models/item/screwdriver.json`. The screwdriver recipe uses `{ "tag": "c:iron_ingots" }` on Fabric and `{ "tag": "forge:ingots/iron" }` on Forge. The Fabric tag is shipped with `minecraft:iron_ingot` and optional pointers at `#forge:ingots/iron` and `#c:ingots/iron`.
 - Use `Ids.of(namespace, path)` instead of `Identifier.fromNamespaceAndPath` if you need a version-safe constructor. On 1.20.1 that helper uses `new ResourceLocation` (the static factory is a later Mojang method; Forge 47.4 backports it, Fabric does not). `FileToIdConverter` is also missing on Fabric 1.20.1, so Workshop Core ships a small copy for datapack scans.
 
 ## Maven coordinates

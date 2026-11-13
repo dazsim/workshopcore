@@ -14,7 +14,8 @@ sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**")
     applyOverlays(rootProject.file("."), overlayChain(mc, "forge"))
     resources.srcDir(tasks.register<Data120>("data120") {
-        sources.from(rootProject.file("src/main/resources"))
+        dependsOn("stonecutterGenerate")
+        sources.from(layout.buildDirectory.dir("generated/stonecutter/main/resources"))
         forge = true
         outputDir = layout.buildDirectory.dir("generated/data120")
     }.map { it.outputDir })
@@ -75,6 +76,7 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
+
     named("createMinecraftArtifacts") {
         dependsOn("stonecutterGenerate")
     }
@@ -92,6 +94,8 @@ tasks {
         from(rootProject.file("LICENSE")) { rename { "${it}_$name" } }
     }
 }
+
+preferProcessedStonecutterResources(sc.current.isActive)
 
 publishing {
     publications {

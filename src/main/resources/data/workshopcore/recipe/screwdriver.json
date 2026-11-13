@@ -2,15 +2,30 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "key": {
+    //? if >=26.1 {
     "I": "#c:ingots/iron",
     "S": "minecraft:stick"
+    //?} else if forge {
+    /*"I": { "tag": "forge:ingots/iron" },
+    "S": { "item": "minecraft:stick" }*/
+    //?} else if <1.21 {
+    /*"I": { "tag": "c:iron_ingots" },
+    "S": { "item": "minecraft:stick" }*/
+    //?} else {
+    /*"I": { "tag": "c:ingots/iron" },
+    "S": { "item": "minecraft:stick" }*/
+    //?}
   },
   "pattern": [
     "I",
     "S"
   ],
   "result": {
+    //? if >=1.20.5 {
     "id": "workshopcore:screwdriver",
+    //?} else {
+    /*"item": "workshopcore:screwdriver",*/
+    //?}
     "count": 1
   }
 }
