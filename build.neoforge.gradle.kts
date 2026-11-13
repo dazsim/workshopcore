@@ -17,7 +17,8 @@ val requiredJava = when {
 }
 
 sourceSets.main {
-    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/forge/**")
+    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/forge/**", "com/workshopcraft/workshopcore/mixin/**")
+    if (!modern) java.exclude("com/workshopcraft/workshopcore/backdrop/**")
     if (!modern) applyOverlays(rootProject.file("."), overlayChain(mc, "neoforge"))
 }
 
@@ -62,7 +63,7 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/neoforge.mods.toml") { expand(props) }
-        exclude("fabric.mod.json", "META-INF/mods.toml", "workshopcore.accesswidener")
+        exclude("fabric.mod.json", "META-INF/mods.toml", "workshopcore.accesswidener", "workshopcore.mixins.json")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 

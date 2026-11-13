@@ -2,7 +2,7 @@ package com.workshopcraft.workshopcore;
 
 public final class WorkshopCore {
     public static final String MOD_ID = "workshopcore";
-    public static final String API_VERSION = "0.2.0";
+    public static final String API_VERSION = "0.3.0";
 
     private WorkshopCore() {
     }

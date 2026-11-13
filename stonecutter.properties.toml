@@ -1,7 +1,7 @@
 mod.id = "workshopcore"
 mod.name = "Workshop Core"
 mod.group = "com.workshopcraft.workshopcore"
-mod.version = "0.2.0"
+mod.version = "0.3.0"
 mod.author = "workshopcraft"
 mod.description = "Shared library for Workshopcraft mods."
 

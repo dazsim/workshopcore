@@ -11,7 +11,7 @@ group = property("mod.group") as String
 base.archivesName = "${property("mod.id")}-forge-$mc"
 
 sourceSets.main {
-    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**")
+    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/mixin/**")
     applyOverlays(rootProject.file("."), overlayChain(mc, "forge"))
 }
 
@@ -55,7 +55,7 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/mods.toml") { expand(props) }
-        exclude("fabric.mod.json", "META-INF/neoforge.mods.toml", "workshopcore.accesswidener")
+        exclude("fabric.mod.json", "META-INF/neoforge.mods.toml", "workshopcore.accesswidener", "workshopcore.mixins.json")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 

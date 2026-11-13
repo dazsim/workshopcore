@@ -13,11 +13,18 @@
     "entrypoints": {
         "main": [
             "com.workshopcraft.workshopcore.fabric.WorkshopCoreFabric"
+        ],
+        "client": [
+            "com.workshopcraft.workshopcore.fabric.WorkshopCoreFabricClient"
         ]
     },
+    "mixins": [
+        "workshopcore.mixins.json"
+    ],
     "depends": {
         "fabricloader": ">=${loader}",
         "minecraft": "${minecraft}",
-        "java": ">=${java}"
+        "java": ">=${java}",
+        "fabric-api": "*"
     }
 }

@@ -20,6 +20,7 @@ dependencies {
     minecraft("com.mojang:minecraft:$mc")
     loomx.applyMojangMappings()
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
+    if (modern) modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
 }
 
 loom {
@@ -32,7 +33,10 @@ loom {
 
 sourceSets.main {
     java.exclude("com/workshopcraft/workshopcore/neoforge/**", "com/workshopcraft/workshopcore/forge/**")
-    if (!modern) applyOverlays(rootProject.file("."), overlayChain(mc, "fabric"))
+    if (!modern) {
+        java.exclude("com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/mixin/**")
+        applyOverlays(rootProject.file("."), overlayChain(mc, "fabric"))
+    }
 }
 
 java {
@@ -57,8 +61,8 @@ tasks {
         inputs.properties(props)
         filesMatching("fabric.mod.json") { expand(props) }
         if (!modern) {
-            filesMatching("fabric.mod.json") { filter(StripAccessWidener::class.java) }
-            exclude("workshopcore.accesswidener")
+            filesMatching("fabric.mod.json") { filter(StripLegacyFabricJson::class.java) }
+            exclude("workshopcore.accesswidener", "workshopcore.mixins.json")
         }
         exclude("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE

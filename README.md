@@ -2,11 +2,11 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.2.0.
+Mod id: `workshopcore`. Version 0.3.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
-This is a library only. Do not put it in a mods folder on its own; bundle it as shown below.
+This is a library only. Do not put it in a mods folder on its own; bundle it as shown below. The 26.x Fabric artifact depends on Fabric API (do not jar-in-jar Fabric API).
 
 `WorkshopCore` itself has no Minecraft or loader dependencies. The `compat` package is a version compatibility layer and depends on Minecraft.
 
@@ -17,11 +17,11 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.2.0"`
+- `API_VERSION` - the API version string, currently `"0.3.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
-if (WorkshopCore.isAtLeast("0.2.0")) {
+if (WorkshopCore.isAtLeast("0.3.0")) {
     // safe to call 0.2 API
 }
 ```
@@ -146,28 +146,104 @@ These exist so 1.20.1 code can keep the later component and network-codec names.
 - `com.workshopcraft.workshopcore.compat.item.BlockItemStateProperties`
 - `com.workshopcraft.workshopcore.compat.codec.StreamCodec` / `ByteBufCodecs`
 
+### Sky / backdrop renderer
+
+Package `com.workshopcraft.workshopcore.backdrop`. Available on Minecraft 26.1.2 and later. Older version nodes still configure, but this feature is not compiled there yet.
+
+A backdrop is a named, data-driven sky. When one is set on a level it replaces the vanilla sun, moon, stars and end sky. Fog, clouds and weather stay vanilla. If nothing is set, the vanilla sky is left alone. There is no crossfade between backdrops in this version; a set is instant. A later version may add a fade.
+
+#### Data files
+
+`data/<namespace>/workshopcore/backdrops/<name>.json`. The id is `<namespace>:<name>`.
+
+```json
+{
+  "layers": [
+    { "type": "color", "color": "#000010" },
+    { "type": "gradient", "top": "#000010", "horizon": "#1a0033", "bottom": "#000000" },
+    { "type": "stars", "count": 2000, "brightness": 1.0, "seed": 1, "rotate_with_time": true, "drift": 0.4 },
+    { "type": "warp", "count": 80, "speed": 1.0, "length": 8.0, "color": "#a0c8ff", "direction": { "yaw": 0, "pitch": 0 } },
+    { "type": "body", "texture": "mymod:textures/environment/planet.png", "size": 24, "azimuth": 210, "altitude": 18, "spin": 0.05 }
+  ]
+}
+```
+
+This example is documentation only. Workshop Core does not ship backdrop data.
+
+Layer types:
+
+- `color` (alias `sky_color`): solid sky disc. `color` is `#RRGGBB` or `#AARRGGBB`.
+- `gradient`: vertical wash. `top`, optional `horizon`, `bottom`.
+- `stars`: static starfield. `count`, `brightness`, optional `color`, `seed`. Optional `rotate_with_time` follows the day cycle. Optional `drift` is extra rotation in degrees per second.
+- `warp`: moving streaks. `count`, `speed`, `length`, optional `color`, `spread`. Optional `direction` is `{ "yaw", "pitch" }` in degrees; yaw 0 pitch 0 points toward -Z (north).
+- `body`: a textured disc. `texture` is an assets path. `size` is apparent diameter in degrees. `azimuth` and `altitude` are degrees (azimuth 0 is -Z, altitude 90 is zenith). Optional `spin` is revolutions per second. Optional `orbit_speed` (degrees per second) and `orbit_axis` (`{ "yaw", "pitch" }`, default straight up).
+
+Layers draw in list order, back to front. Textures come from resource packs.
+
+Defaults: `data/<namespace>/workshopcore/backdrop_defaults.json`
+
+```json
+{
+  "dimensions": {
+    "minecraft:the_end": "mymod:end_dark"
+  },
+  "dimension_types": {
+    "simplemachines:portal_void": "simplemachines:void_sky"
+  }
+}
+```
+
+A dimension id wins over a dimension type. Later packs replace earlier ones for the same key. On first load of a level, if nothing is saved, the default is applied and saved. After that the saved value wins. If a saved id is missing after a reload, the sky is vanilla until a valid id is set; the saved id is kept.
+
+A backdrop will not show in a dimension whose type has `skybox: none`, because vanilla never runs the sky pass there.
+
+#### API and command
+
+```java
+Backdrops.set(level, Identifier.parse("homebound:warp"));
+Backdrops.clear(level);
+Optional<Identifier> current = Backdrops.get(level);
+boolean loaded = Backdrops.exists(Identifier.parse("homebound:warp"));
+
+BackdropEvents.listen((level, oldId, newId) -> {
+    // fired on set, clear, and first default apply
+});
+```
+
+`Backdrops.set` throws if the id is not loaded.
+
+```
+/workshopcore backdrop get
+/workshopcore backdrop set <id>
+/workshopcore backdrop clear
+```
+
+Permission 2, current level. Simple Void can wrap this as `/void backdrop` later.
+
+The current id is stored per level with `SavedDataType` under `workshopcore:backdrop`. Clients are synced on set or clear, on login, on datapack reload, and when a player changes dimension.
+
 ## Maven coordinates
 
 Builds are published to the local Maven folder `/workspace/mods/workshopcore-maven`.
 
 - Group: `com.workshopcraft.workshopcore`
 - Artifact id: `workshopcore-<loader>-<minecraft>`
-- Version: the library version, for example `0.2.0`
+- Version: the library version, for example `0.3.0`
 
 Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your game version and loader:
 
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.2.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.2.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.3.0`
 
-0.2.0 is published for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not published yet.
+0.3.0 is published for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not published yet.
 
 Repository:
 
@@ -183,8 +259,8 @@ repositories {
 
 ```kotlin
 dependencies {
-    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.2.0")
-    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.2.0")
+    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.3.0")
+    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.3.0")
 }
 ```
 
@@ -199,7 +275,7 @@ dependencies {
     jarJar(implementation("com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2") {
         version {
             strictly("[0.1,1.0)")
-            prefer("0.2.0")
+            prefer("0.3.0")
         }
     })
 }
