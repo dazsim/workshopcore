@@ -17,12 +17,26 @@ import net.neoforged.neoforge.common.NeoForge;
 @Mod(value = WorkshopCore.MOD_ID, dist = Dist.CLIENT)
 public class WorkshopCoreNeoForgeClient {
     //? if >=26.1 {
+    //? if >=26.3 {
+    /*private static final CustomCloudsRenderer HIDE_CLOUDS = new CustomCloudsRenderer() {
+        @Override
+        public boolean renderClouds(net.minecraft.client.renderer.state.level.LevelRenderState state, net.minecraft.client.CloudStatus status, org.joml.Matrix4fc mv, com.mojang.blaze3d.systems.RenderPass renderPass) {
+            return true;
+        }
+
+        @Override
+        public boolean renderCloudsOit(net.minecraft.client.renderer.state.level.LevelRenderState state, net.minecraft.client.CloudStatus status, org.joml.Matrix4fc mv, net.minecraft.client.renderer.oit.OitStage stage, com.mojang.blaze3d.textures.GpuTextureView mainDepthTextureView, net.minecraft.client.renderer.oit.OitRenderPassProvider.Parameters params) {
+            return true;
+        }
+    };*/
+    //?} else {
     private static final CustomCloudsRenderer HIDE_CLOUDS = new CustomCloudsRenderer() {
         @Override
         public boolean renderClouds(net.minecraft.client.renderer.state.level.LevelRenderState state, net.minecraft.world.phys.Vec3 cam, net.minecraft.client.CloudStatus status, int color, float height, int range, org.joml.Matrix4fc mv) {
             return true;
         }
     };
+    //?}
     //?}
 
     public WorkshopCoreNeoForgeClient(IEventBus modBus) {

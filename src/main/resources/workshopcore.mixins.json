@@ -6,6 +6,9 @@
     "client": [
         "LevelRendererMixin",
         "FogRendererMixin"
+        //? if >=26.3 {
+        , "CloudRendererMixin"
+        //?}
     ],
     "injectors": {
         "defaultRequire": 1

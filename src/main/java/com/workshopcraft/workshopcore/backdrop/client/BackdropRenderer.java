@@ -2,6 +2,9 @@ package com.workshopcraft.workshopcore.backdrop.client;
 
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+//? if >=26.2 {
+/*import com.mojang.blaze3d.PrimitiveTopology;*/
+//?}
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -14,6 +17,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.workshopcraft.workshopcore.backdrop.Backdrop;
 import com.workshopcraft.workshopcore.backdrop.BackdropLayer;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
@@ -35,11 +40,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
+//? if >=26.2 {
+/*import java.util.Optional;*/
+//?} else {
 import java.util.OptionalInt;
+//?}
 
 /** Draws backdrop layers with the 26.x GPU pipelines. */
 public final class BackdropRenderer {
+    //? if >=26.2 {
+    /*private static final RenderSystem.AutoStorageIndexBuffer QUADS = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);*/
+    //?} else {
     private static final RenderSystem.AutoStorageIndexBuffer QUADS = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS);
+    //?}
     private static GpuBuffer skyDisc;
     private static final Map<String, CachedMesh> MESHES = new HashMap<>();
 
@@ -130,13 +143,13 @@ public final class BackdropRenderer {
     private static void renderColor(BackdropLayer.Color color, float alpha) {
         Vector4f tint = ARGB.vector4fFromARGB32(color.color());
         tint.w *= alpha;
-        drawFan(RenderPipelines.SKY, skyDisc, 10, tint, RenderSystem.getModelViewMatrix());
+        drawFan(RenderPipelines.SKY, skyDisc, 10, tint, modelViewMatrix());
     }
 
     private static void renderGradient(BackdropLayer.Gradient gradient, float alpha) {
         String key = "grad:" + gradient.top() + ":" + gradient.horizon() + ":" + gradient.bottom();
         CachedMesh mesh = MESHES.computeIfAbsent(key, k -> buildGradient(gradient));
-        drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, alpha), RenderSystem.getModelViewMatrix(), null);
+        drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, alpha), modelViewMatrix(), null);
     }
 
     private static void renderStars(BackdropLayer.Stars stars, Matrix4fStack stack, float seconds, float partial, float alpha) {
@@ -169,12 +182,25 @@ public final class BackdropRenderer {
         PoseStack pose = new PoseStack();
         if (body.orbitSpeed() != 0.0F) {
             Vector3f axis = body.orbitAxis().vector();
+            //? if >=26.3 {
+            /*pose.rotate(com.mojang.math.Axis.of(axis).rotationDegrees(body.orbitSpeed() * seconds));*/
+            //?} else {
             pose.mulPose(com.mojang.math.Axis.of(axis).rotationDegrees(body.orbitSpeed() * seconds));
+            //?}
         }
+        //? if >=26.3 {
+        /*pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(-body.azimuth()));
+        pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(90.0F - body.altitude()));*/
+        //?} else {
         pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(-body.azimuth()));
         pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(90.0F - body.altitude()));
+        //?}
         if (body.spin() != 0.0F) {
+            //? if >=26.3 {
+            /*pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(body.spin() * 360.0F * seconds));*/
+            //?} else {
             pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(body.spin() * 360.0F * seconds));
+            //?}
         }
         stack.pushMatrix();
         stack.mul(pose.last().pose());
@@ -191,7 +217,11 @@ public final class BackdropRenderer {
             return;
         }
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(10 * DefaultVertexFormat.POSITION.getVertexSize())) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.TRIANGLE_FAN, DefaultVertexFormat.POSITION);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION);
+            //?}
             builder.addVertex(0.0F, 16.0F, 0.0F);
             float x = 512.0F;
             for (int i = -180; i <= 180; i += 45) {
@@ -209,7 +239,11 @@ public final class BackdropRenderer {
         int quads = rings * segs;
         int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(quads * 4 * vtxSize)) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            //?}
             for (int r = 0; r < rings; r++) {
                 float t0 = r / (float) rings;
                 float t1 = (r + 1) / (float) rings;
@@ -258,7 +292,11 @@ public final class BackdropRenderer {
         RandomSource random = RandomSource.create(stars.seed());
         int vtxSize = DefaultVertexFormat.POSITION.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * count * 4)) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
+            //?}
             for (int i = 0; i < count; i++) {
                 float x = random.nextFloat() * 2.0F - 1.0F;
                 float y = random.nextFloat() * 2.0F - 1.0F;
@@ -295,7 +333,11 @@ public final class BackdropRenderer {
         RandomSource random = RandomSource.create(42L);
         int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * count * 4)) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            //?}
             Vector3f axis = warp.direction().vector().normalize();
             Vector3f vanish = new Vector3f(axis).mul(WARP_VANISH_DISTANCE);
             Vector3f towardCamera = new Vector3f(axis).negate();
@@ -372,7 +414,11 @@ public final class BackdropRenderer {
     private static CachedMesh buildUnitQuad() {
         int vtxSize = DefaultVertexFormat.POSITION_TEX.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(4 * vtxSize)) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_TEX);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            //?}
             builder.addVertex(-1.0F, 0.0F, -1.0F).setUv(0.0F, 0.0F);
             builder.addVertex(1.0F, 0.0F, -1.0F).setUv(1.0F, 0.0F);
             builder.addVertex(1.0F, 0.0F, 1.0F).setUv(1.0F, 1.0F);
@@ -389,35 +435,70 @@ public final class BackdropRenderer {
     }
 
     private static void drawFan(RenderPipeline pipeline, GpuBuffer buffer, int vertexCount, Vector4f color, Matrix4fc modelView) {
-        GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(modelView, color, new Vector3f(), new Matrix4f());
-        GpuTextureView colorView = Minecraft.getInstance().getMainRenderTarget().getColorTextureView();
-        GpuTextureView depthView = Minecraft.getInstance().getMainRenderTarget().getDepthTextureView();
+        GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(new Matrix4f(modelView), color, new Vector3f(), new Matrix4f());
+        GpuTextureView colorView = mainRenderTarget().getColorTextureView();
+        GpuTextureView depthView = mainRenderTarget().getDepthTextureView();
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
-                .createRenderPass(() -> "workshopcore sky", colorView, OptionalInt.empty(), depthView, OptionalDouble.empty())) {
+                .createRenderPass(() -> "workshopcore sky", colorView,
+                        //? if >=26.2 {
+                        /*Optional.empty(),*/
+                        //?} else {
+                        OptionalInt.empty(),
+                        //?}
+                        depthView, OptionalDouble.empty())) {
+            //? if >=26.3 {
+            /*pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline));*/
+            //?} else {
             pass.setPipeline(pipeline);
+            //?}
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("DynamicTransforms", transforms);
+            //? if >=26.2 {
+            /*pass.setVertexBuffer(0, buffer.slice());
+            pass.draw(vertexCount, 1, 0, 0);*/
+            //?} else {
             pass.setVertexBuffer(0, buffer);
             pass.draw(0, vertexCount);
+            //?}
         }
     }
 
     private static void drawIndexed(RenderPipeline pipeline, CachedMesh mesh, Vector4f color, Matrix4fc modelView, AbstractTexture texture) {
-        GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(modelView, color, new Vector3f(), new Matrix4f());
-        GpuTextureView colorView = Minecraft.getInstance().getMainRenderTarget().getColorTextureView();
-        GpuTextureView depthView = Minecraft.getInstance().getMainRenderTarget().getDepthTextureView();
+        GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(new Matrix4f(modelView), color, new Vector3f(), new Matrix4f());
+        GpuTextureView colorView = mainRenderTarget().getColorTextureView();
+        GpuTextureView depthView = mainRenderTarget().getDepthTextureView();
         GpuBuffer indices = QUADS.getBuffer(mesh.indexCount);
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
-                .createRenderPass(() -> "workshopcore sky layer", colorView, OptionalInt.empty(), depthView, OptionalDouble.empty())) {
+                .createRenderPass(() -> "workshopcore sky layer", colorView,
+                        //? if >=26.2 {
+                        /*Optional.empty(),*/
+                        //?} else {
+                        OptionalInt.empty(),
+                        //?}
+                        depthView, OptionalDouble.empty())) {
+            //? if >=26.3 {
+            /*pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline));*/
+            //?} else {
             pass.setPipeline(pipeline);
+            //?}
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("DynamicTransforms", transforms);
             if (texture != null) {
+                //? if >=26.3 {
+                /*pass.setUniform("Sampler0", texture.getTextureView(), texture.getSampler());*/
+                //?} else {
                 pass.bindTexture("Sampler0", texture.getTextureView(), texture.getSampler());
+                //?}
             }
+            //? if >=26.2 {
+            /*pass.setVertexBuffer(0, mesh.buffer.slice());
+            pass.setIndexBuffer(indices, QUADS.type());
+            pass.drawIndexed(mesh.indexCount, 1, 0, 0, 0);*/
+            //?} else {
             pass.setVertexBuffer(0, mesh.buffer);
             pass.setIndexBuffer(indices, QUADS.type());
             pass.drawIndexed(0, 0, mesh.indexCount, 1);
+            //?}
         }
     }
 
@@ -580,7 +661,11 @@ public final class BackdropRenderer {
         }
         int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * streaks.size() * 4)) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            //?}
             int drawn = 0;
             for (StreakDraw streak : streaks) {
                 if (streak.length() <= 0.01F || streak.brightness() <= 0.0F) {
@@ -624,7 +709,11 @@ public final class BackdropRenderer {
         }
         int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * stars.size() * 4)) {
+            //? if >=26.2 {
+            /*BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_COLOR);*/
+            //?} else {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            //?}
             for (StarSample star : stars) {
                 Vector3f center = star.pos();
                 float size = star.size();
@@ -682,7 +771,7 @@ public final class BackdropRenderer {
     }
 
     private static float starAngle(float partial) {
-        return Minecraft.getInstance().gameRenderer.getMainCamera().attributeProbe()
+        return mainCamera().attributeProbe()
                 .getValue(EnvironmentAttributes.STAR_ANGLE, partial) * ((float) Math.PI / 180.0F);
     }
 
@@ -691,6 +780,32 @@ public final class BackdropRenderer {
         float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
         long time = level == null ? 0L : level.getGameTime();
         return (time + partial) / 20.0F;
+    }
+
+
+
+    private static RenderTarget mainRenderTarget() {
+        //? if >=26.2 {
+        /*return Minecraft.getInstance().gameRenderer.mainRenderTarget();*/
+        //?} else {
+        return Minecraft.getInstance().getMainRenderTarget();
+        //?}
+    }
+
+    private static Camera mainCamera() {
+        //? if >=26.2 {
+        /*return Minecraft.getInstance().gameRenderer.mainCamera();*/
+        //?} else {
+        return Minecraft.getInstance().gameRenderer.getMainCamera();
+        //?}
+    }
+
+    private static Matrix4f modelViewMatrix() {
+        //? if >=26.2 {
+        /*return RenderSystem.getModelViewMatrixCopy();*/
+        //?} else {
+        return RenderSystem.getModelViewMatrix();
+        //?}
     }
 
     private static void close(GpuBuffer buffer) {

@@ -45,14 +45,22 @@ public class LevelRendererMixin {
         }
         FramePass pass = frame.addPass("workshopcore_sky");
         this.targets.main = pass.readsAndWrites(this.targets.main);
-        pass.executes(() -> BackdropClient.render(RenderSystem.getModelViewMatrix(), () -> RenderSystem.setShaderFog(skyFog)));
+        pass.executes(() -> BackdropClient.render(
+                //? if >=26.2 {
+                /*RenderSystem.getModelViewMatrixCopy(),*/
+                //?} else {
+                RenderSystem.getModelViewMatrix(),
+                //?}
+                () -> RenderSystem.setShaderFog(skyFog)));
         ci.cancel();
     }
 
+    //? if <26.3 {
     @Inject(method = "addCloudsPass", at = @At("HEAD"), cancellable = true)
     private void workshopcore$hideClouds(FrameGraphBuilder frame, CloudStatus cloudStatus, Vec3 cameraPosition, long gameTime, float partialTicks, int cloudColor, float cloudHeight, int cloudRange, CallbackInfo ci) {
         if (BackdropClient.hasActive()) {
             ci.cancel();
         }
     }
+    //?}
 }

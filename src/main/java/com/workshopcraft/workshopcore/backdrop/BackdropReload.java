@@ -35,7 +35,11 @@ public final class BackdropReload extends SimplePreparableReloadListener<Backdro
     @Override
     protected Prepared prepare(ResourceManager manager, ProfilerFiller profiler) {
         Map<Identifier, Backdrop> defs = new HashMap<>();
+        //? if fabric && >=26.3 {
+        /*com.workshopcraft.workshopcore.ResourceScan.scanDirectory(manager, BACKDROPS, JsonOps.INSTANCE, Backdrop.CODEC, defs);*/
+        //?} else {
         SimpleJsonResourceReloadListener.scanDirectory(manager, BACKDROPS, JsonOps.INSTANCE, Backdrop.CODEC, defs);
+        //?}
 
         Map<String, Integer> packOrder = new HashMap<>();
         int index = 0;
