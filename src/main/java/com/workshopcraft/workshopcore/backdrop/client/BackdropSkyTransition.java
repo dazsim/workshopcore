@@ -168,6 +168,12 @@ final class BackdropSkyTransition {
 
         List<BackdropRenderer.StreakDraw> draws = new ArrayList<>();
         if (enteringWarp) {
+            // Keep the original points visible at the start so the field does not go black
+            // before the stars have elongated into streaks.
+            float pointAlpha = 1.0F - smooth(p, 0.0F, 0.4F);
+            if (pointAlpha > 0.0F && !fromStars.isEmpty()) {
+                BackdropRenderer.drawStarPoints(fromStars, modelView, pointAlpha);
+            }
             addEnteringStarStreaks(draws, p);
             addLeavingStreaks(draws, p, 0.35F);
         } else {
@@ -197,8 +203,10 @@ final class BackdropSkyTransition {
             float length = Mth.lerp(ease, streak.length(), fullLen);
             float width = Mth.lerp(ease, streak.width(), 0.06F + 0.28F * Mth.clamp(tTail, 0.0F, 1.2F));
             int color = lerpColor(streak.color(), warpColor, ease);
-            float brightness = 1.0F - 0.15F * p;
-            draws.add(new BackdropRenderer.StreakDraw(streak.vanish(), streak.ray(), streak.side(), dist, length, width, color, brightness));
+            float tWarp = BackdropRenderer.warpBrightness(tTail);
+            // Start at full star brightness and ease into the warp brightness curve.
+            float brightness = Mth.lerp(ease, 1.0F, Math.max(tWarp, 0.15F));
+            draws.add(new BackdropRenderer.StreakDraw(streak.vanish(), streak.ray(), streak.side(), dist, length, width, color, brightness, false));
         }
     }
 

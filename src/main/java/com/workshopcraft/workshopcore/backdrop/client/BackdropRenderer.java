@@ -347,7 +347,7 @@ public final class BackdropRenderer {
                 .normalize();
     }
 
-    private static float warpBrightness(float t) {
+    static float warpBrightness(float t) {
         if (t <= 0.05F) {
             return 0.0F;
         }
@@ -592,8 +592,14 @@ public final class BackdropRenderer {
                 Vector3f headSide = new Vector3f(streak.side()).mul(streak.width());
                 float tTail = streak.dist() / WARP_VANISH_DISTANCE;
                 float tHead = (streak.dist() + streak.length()) / WARP_VANISH_DISTANCE;
-                int tail = scaleColor(streak.color(), warpBrightness(tTail) * streak.brightness());
-                int head = scaleColor(streak.color(), warpBrightness(Math.max(tHead, tTail)) * streak.brightness());
+                float tailB = streak.brightness();
+                float headB = streak.brightness();
+                if (streak.warpCurve()) {
+                    tailB *= warpBrightness(tTail);
+                    headB *= warpBrightness(Math.max(tHead, tTail));
+                }
+                int tail = scaleColor(streak.color(), tailB);
+                int head = scaleColor(streak.color(), headB);
                 builder.addVertex(start.x - tailSide.x, start.y - tailSide.y, start.z - tailSide.z).setColor(tail);
                 builder.addVertex(start.x + tailSide.x, start.y + tailSide.y, start.z + tailSide.z).setColor(tail);
                 builder.addVertex(end.x + headSide.x, end.y + headSide.y, end.z + headSide.z).setColor(head);
@@ -661,7 +667,10 @@ public final class BackdropRenderer {
         }
     }
 
-    record StreakDraw(Vector3f vanish, Vector3f ray, Vector3f side, float dist, float length, float width, int color, float brightness) {
+    record StreakDraw(Vector3f vanish, Vector3f ray, Vector3f side, float dist, float length, float width, int color, float brightness, boolean warpCurve) {
+        StreakDraw(Vector3f vanish, Vector3f ray, Vector3f side, float dist, float length, float width, int color, float brightness) {
+            this(vanish, ray, side, dist, length, width, color, brightness, true);
+        }
     }
 
     private static Vector4f colorToVec(int argb, float brightness) {
