@@ -26,10 +26,10 @@ public class WorkshopCoreNeoForge {
         modBus.addListener((net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent e) -> e.registrar("1")
                 .playToClient(com.workshopcraft.workshopcore.backdrop.BackdropSyncPacket.TYPE,
                         com.workshopcraft.workshopcore.backdrop.BackdropSyncPacket.STREAM_CODEC,
-                        (payload, ctx) -> payload.handle())
+                        (payload, ctx) -> ctx.enqueueWork(payload::handle))
                 .playToClient(com.workshopcraft.workshopcore.backdrop.BackdropDefsPacket.TYPE,
                         com.workshopcraft.workshopcore.backdrop.BackdropDefsPacket.STREAM_CODEC,
-                        (payload, ctx) -> payload.handle()));
+                        (payload, ctx) -> ctx.enqueueWork(payload::handle)));
         var game = net.neoforged.neoforge.common.NeoForge.EVENT_BUS;
         game.addListener((net.neoforged.neoforge.event.AddServerReloadListenersEvent e) ->
                 e.addListener(com.workshopcraft.workshopcore.backdrop.BackdropReload.ID, new com.workshopcraft.workshopcore.backdrop.BackdropReload()));
