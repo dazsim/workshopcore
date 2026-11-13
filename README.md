@@ -41,7 +41,7 @@ RecipeSerializer<MyRecipe> serializer = Registration.serializer(MyRecipe.CODEC, 
 
 On 1.20.1, `Registration.id(recipe)` / `Registration.withId(id, recipe)` keep recipe ids that the serializer reads from JSON or the network.
 
-`Registration.blockEntity` takes `Registration.BlockEntityFactory`. On 26.x Fabric, Workshop Core ships an access widener so the vanilla `BlockEntityType` constructor is callable; NeoForge already opens it.
+`Registration.blockEntity` takes `Registration.BlockEntityFactory`. If you already have a vanilla `BlockEntityType.BlockEntitySupplier`, call `Registration.blockEntitySupplier` instead. The method is named separately so `MyBe::new` is not ambiguous. On 26.x Fabric, Workshop Core ships an access widener so the vanilla `BlockEntityType` constructor is callable; NeoForge already opens it.
 
 #### Saved data
 
@@ -112,7 +112,17 @@ On 1.20.1, override `componentStorageKey()` (for example `"SimpleMachines"`) if 
 - `Players.overlay(player, message)` - action-bar / overlay text
 - `Players.reach(player)` - block interaction range
 - `Interactions.TRY_WITH_EMPTY_HAND` - from `useItemOn`, meaning "try the empty-hand hook next". On 1.21.1, `Interactions.item(result)` maps that to `ItemInteractionResult`.
-- `ChunkTickets.add(level, pos, radius)` / `remove(...)` - loading and ticking tickets that are not written to the vanilla ticket file. Workshop Core registers the `workshopcore:chunk_loader` type on 26.x; older versions create it themselves.
+- `ChunkTickets.add(level, pos, radius)` / `remove(...)` - loading and ticking tickets that are not written to the vanilla ticket file. These static methods share one type, `workshopcore:chunk_loader`. If two mods hold the same chunk and radius with them, one `remove` drops both. Prefer `ChunkTickets.create(id)` for an isolated type per owner:
+
+```java
+ChunkTickets.Owner tickets = ChunkTickets.create(Identifier.fromNamespaceAndPath("mymod", "chunk_loader"));
+// 26.x only: register during loader init (Fabric Registry.register, or NeoForge RegisterEvent)
+tickets.register((id, type) -> Registry.register(BuiltInRegistries.TICKET_TYPE, id, type));
+tickets.add(level, pos, radius);
+tickets.remove(level, pos, radius);
+```
+
+Workshop Core registers the shared type on 26.x, and any `create` owners already made at that point. Older versions do not need a registry call; `create` still returns an isolated type.
 
 #### Item helpers
 
@@ -193,7 +203,7 @@ Defaults: `data/<namespace>/workshopcore/backdrop_defaults.json`
 }
 ```
 
-A dimension id wins over a dimension type. Later packs replace earlier ones for the same key. On first load of a level, if nothing is saved, the default is applied and saved. After that the saved value wins. If a saved id is missing after a reload, the sky is vanilla until a valid id is set; the saved id is kept.
+A dimension id wins over a dimension type. Definitions use the highest-priority pack for each id. Default files from every pack are merged in pack order, later packs winning on the same key. On first load of a level, if nothing is saved, the default is applied and saved. After that the saved value wins, including after `/reload` and a server restart. `Backdrops.clear` (and the clear command) saves an explicit vanilla state, so a default is not reapplied until the save is gone. If a saved id is missing after a reload, the sky is vanilla until a valid id is set; the saved id is kept.
 
 A backdrop will not show in a dimension whose type has `skybox: none`, because vanilla never runs the sky pass there.
 
@@ -220,7 +230,7 @@ BackdropEvents.listen((level, oldId, newId) -> {
 
 Permission 2, current level. Simple Void can wrap this as `/void backdrop` later.
 
-The current id is stored per level with `SavedDataType` under `workshopcore:backdrop`. Clients are synced on set or clear, on login, on datapack reload, and when a player changes dimension.
+The current id is stored per level with `SavedDataType` under `workshopcore:backdrop`. Backdrop JSON lives in server data packs, so the client is sent the validated definitions (not just ids) on login, on datapack reload, and when a player changes dimension. The current assignment is also sent on set, clear, login, reload, and dimension change. When a level unloads, clients drop the cached assignment for that dimension key so a later runtime dimension with the same key cannot keep a stale sky. Disconnect also clears the client cache.
 
 ## Maven coordinates
 

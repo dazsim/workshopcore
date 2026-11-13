@@ -69,6 +69,14 @@ public final class Backdrops {
         ensureInitialized(level);
     }
 
+    /**
+     * Drop the client cache for this dimension key without changing saved data.
+     * A later load of a new level with the same key will not inherit a stale client assignment.
+     */
+    public static void onLevelUnload(ServerLevel level) {
+        BackdropNetworking.forgetDimension(level.getServer(), level.dimension());
+    }
+
     static void ensureInitialized(ServerLevel level) {
         BackdropData data = data(level);
         if (data.initialized()) {

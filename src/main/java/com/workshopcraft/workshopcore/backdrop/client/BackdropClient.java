@@ -22,6 +22,7 @@ public final class BackdropClient {
     private static final Set<Identifier> WARNED = ConcurrentHashMap.newKeySet();
     private static final Map<ResourceKey<Level>, Identifier> ASSIGNMENTS = new HashMap<>();
     private static Map<Identifier, Backdrop> DEFS = Map.of();
+    private static ResourceKey<Level> lastLevel;
 
     private BackdropClient() {
     }
@@ -40,10 +41,25 @@ public final class BackdropClient {
         }
     }
 
+    public static void drop(ResourceKey<Level> dimension) {
+        ASSIGNMENTS.remove(dimension);
+        BackdropRenderer.invalidate();
+    }
+
     public static void clear() {
         ASSIGNMENTS.clear();
         DEFS = Map.of();
         WARNED.clear();
+        lastLevel = null;
+        BackdropRenderer.invalidate();
+    }
+
+    public static void afterClientLevelChange(ClientLevel next) {
+        ResourceKey<Level> nextKey = next == null ? null : next.dimension();
+        if (lastLevel != null && lastLevel != nextKey) {
+            drop(lastLevel);
+        }
+        lastLevel = nextKey;
         BackdropRenderer.invalidate();
     }
 

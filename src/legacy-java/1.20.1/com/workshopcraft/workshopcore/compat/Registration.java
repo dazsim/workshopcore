@@ -64,4 +64,12 @@ public final class Registration {
     public static <T extends BlockEntity> BlockEntityType<T> blockEntity(BlockEntityFactory<T> factory, Set<Block> blocks) {
         return BlockEntityType.Builder.of(factory::create, blocks.toArray(new Block[0])).build(null);
     }
+
+    /**
+     * Same as {@link #blockEntity} but accepts vanilla {@link BlockEntityType.BlockEntitySupplier}.
+     * A separate name avoids ambiguous method references against {@link BlockEntityFactory}.
+     */
+    public static <T extends BlockEntity> BlockEntityType<T> blockEntitySupplier(BlockEntityType.BlockEntitySupplier<T> supplier, Set<Block> blocks) {
+        return BlockEntityType.Builder.of(supplier, blocks.toArray(new Block[0])).build(null);
+    }
 }

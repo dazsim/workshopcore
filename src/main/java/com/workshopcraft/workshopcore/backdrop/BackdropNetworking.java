@@ -3,6 +3,7 @@ package com.workshopcraft.workshopcore.backdrop;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -38,5 +39,12 @@ public final class BackdropNetworking {
 
     public static void syncLevel(ServerLevel level) {
         sendToLevel.accept(level, new BackdropSyncPacket(level.dimension(), Backdrops.get(level)));
+    }
+
+    public static void forgetDimension(MinecraftServer server, ResourceKey<Level> dimension) {
+        BackdropSyncPacket packet = new BackdropSyncPacket(dimension, Optional.empty());
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            sendToPlayer.accept(player, packet);
+        }
     }
 }

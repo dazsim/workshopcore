@@ -48,4 +48,16 @@ public final class Registration {
         /*return BlockEntityType.Builder.of(factory::create, blocks.toArray(new Block[0])).build(null);
         *///?}
     }
+
+    /**
+     * Same as {@link #blockEntity} but accepts vanilla {@link BlockEntityType.BlockEntitySupplier}.
+     * A separate name avoids ambiguous method references against {@link BlockEntityFactory}.
+     */
+    public static <T extends BlockEntity> BlockEntityType<T> blockEntitySupplier(BlockEntityType.BlockEntitySupplier<T> supplier, Set<Block> blocks) {
+        //? if >=26.1 {
+        return new BlockEntityType<>(supplier, blocks);
+        //?} else {
+        /*return BlockEntityType.Builder.of(supplier, blocks.toArray(new Block[0])).build(null);
+        *///?}
+    }
 }

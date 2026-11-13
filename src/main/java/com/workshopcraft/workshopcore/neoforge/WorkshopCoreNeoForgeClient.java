@@ -24,6 +24,11 @@ public class WorkshopCoreNeoForgeClient {
                 e.getRenderState().customSkyboxRenderer = BackdropSkybox.INSTANCE;
             }
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.LevelEvent.Unload e) -> {
+            if (e.getLevel().isClientSide() && e.getLevel() instanceof net.minecraft.client.multiplayer.ClientLevel level) {
+                BackdropClient.drop(level.dimension());
+            }
+        });
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> BackdropClient.clear());
         //?}
     }

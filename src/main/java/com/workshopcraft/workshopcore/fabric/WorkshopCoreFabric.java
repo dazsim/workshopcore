@@ -37,6 +37,8 @@ public class WorkshopCoreFabric implements ModInitializer {
                 (dispatcher, registry, environment) -> com.workshopcraft.workshopcore.backdrop.BackdropCommands.register(dispatcher));
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents.LOAD.register(
                 (server, world) -> com.workshopcraft.workshopcore.backdrop.Backdrops.onLevelLoad(world));
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents.UNLOAD.register(
+                (server, world) -> com.workshopcraft.workshopcore.backdrop.Backdrops.onLevelUnload(world));
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
                 (handler, sender, server) -> com.workshopcraft.workshopcore.backdrop.BackdropNetworking.sendAllTo(handler.player));
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
@@ -49,6 +51,7 @@ public class WorkshopCoreFabric implements ModInitializer {
         net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
             if (destination instanceof net.minecraft.server.level.ServerLevel level) {
                 com.workshopcraft.workshopcore.backdrop.Backdrops.onLevelLoad(level);
+                com.workshopcraft.workshopcore.backdrop.BackdropNetworking.sendDefsTo(player);
                 com.workshopcraft.workshopcore.backdrop.BackdropNetworking.sendAssignment(player, level.dimension(), com.workshopcraft.workshopcore.backdrop.Backdrops.get(level));
             }
         });

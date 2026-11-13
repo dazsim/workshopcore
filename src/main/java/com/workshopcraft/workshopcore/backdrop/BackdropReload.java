@@ -5,6 +5,7 @@ import com.mojang.serialization.JsonOps;
 import com.workshopcraft.workshopcore.WorkshopCore;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -16,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,19 +37,29 @@ public final class BackdropReload extends SimplePreparableReloadListener<Backdro
         Map<Identifier, Backdrop> defs = new HashMap<>();
         SimpleJsonResourceReloadListener.scanDirectory(manager, BACKDROPS, JsonOps.INSTANCE, Backdrop.CODEC, defs);
 
-        BackdropDefaults defaults = BackdropDefaults.empty();
+        Map<String, Integer> packOrder = new HashMap<>();
+        int index = 0;
+        for (PackResources pack : manager.listPacks().toList()) {
+            packOrder.putIfAbsent(pack.packId(), index++);
+        }
+
+        List<Resource> defaultFiles = new ArrayList<>();
         Map<Identifier, List<Resource>> stacks = manager.listResourceStacks("workshopcore", id -> id.getPath().equals("workshopcore/backdrop_defaults.json"));
-        for (Map.Entry<Identifier, List<Resource>> entry : stacks.entrySet()) {
-            for (Resource resource : entry.getValue()) {
-                try (Reader reader = resource.openAsReader()) {
-                    var parsed = BackdropDefaults.CODEC.parse(JsonOps.INSTANCE, StrictJsonParser.parse(reader));
-                    BackdropDefaults current = defaults;
-                    defaults = parsed.resultOrPartial(message -> LOGGER.error("Couldn't parse {}: {}", entry.getKey(), message))
-                            .map(next -> next.mergeOver(current))
-                            .orElse(current);
-                } catch (IOException | JsonParseException | IllegalArgumentException exception) {
-                    LOGGER.error("Couldn't read {}", entry.getKey(), exception);
-                }
+        for (List<Resource> stack : stacks.values()) {
+            defaultFiles.addAll(stack);
+        }
+        defaultFiles.sort(Comparator.comparingInt(resource -> packOrder.getOrDefault(resource.sourcePackId(), -1)));
+
+        BackdropDefaults defaults = BackdropDefaults.empty();
+        for (Resource resource : defaultFiles) {
+            try (Reader reader = resource.openAsReader()) {
+                var parsed = BackdropDefaults.CODEC.parse(JsonOps.INSTANCE, StrictJsonParser.parse(reader));
+                BackdropDefaults current = defaults;
+                defaults = parsed.resultOrPartial(message -> LOGGER.error("Couldn't parse backdrop defaults from {}: {}", resource.sourcePackId(), message))
+                        .map(next -> next.mergeOver(current))
+                        .orElse(current);
+            } catch (IOException | JsonParseException | IllegalArgumentException exception) {
+                LOGGER.error("Couldn't read backdrop defaults from {}", resource.sourcePackId(), exception);
             }
         }
         return new Prepared(Map.copyOf(defs), defaults);

@@ -40,6 +40,11 @@ public class WorkshopCoreNeoForge {
                 com.workshopcraft.workshopcore.backdrop.Backdrops.onLevelLoad(level);
             }
         });
+        game.addListener((net.neoforged.neoforge.event.level.LevelEvent.Unload e) -> {
+            if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
+                com.workshopcraft.workshopcore.backdrop.Backdrops.onLevelUnload(level);
+            }
+        });
         game.addListener((net.neoforged.neoforge.event.OnDatapackSyncEvent e) -> {
             e.getRelevantPlayers().forEach(com.workshopcraft.workshopcore.backdrop.BackdropNetworking::sendAllTo);
         });
@@ -48,6 +53,7 @@ public class WorkshopCoreNeoForge {
                 var level = player.level();
                 if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
                     com.workshopcraft.workshopcore.backdrop.Backdrops.onLevelLoad(serverLevel);
+                    com.workshopcraft.workshopcore.backdrop.BackdropNetworking.sendDefsTo(player);
                     com.workshopcraft.workshopcore.backdrop.BackdropNetworking.sendAssignment(
                             player, serverLevel.dimension(), com.workshopcraft.workshopcore.backdrop.Backdrops.get(serverLevel));
                 }
