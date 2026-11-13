@@ -7,6 +7,7 @@ import net.neoforged.fml.common.Mod;
 
 //? if >=26.1 {
 import com.workshopcraft.workshopcore.backdrop.client.BackdropClient;
+import net.neoforged.neoforge.client.CustomCloudsRenderer;
 import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
 import net.neoforged.neoforge.client.event.RegisterCustomEnvironmentEffectRendererEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
@@ -15,6 +16,15 @@ import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(value = WorkshopCore.MOD_ID, dist = Dist.CLIENT)
 public class WorkshopCoreNeoForgeClient {
+    //? if >=26.1 {
+    private static final CustomCloudsRenderer HIDE_CLOUDS = new CustomCloudsRenderer() {
+        @Override
+        public boolean renderClouds(net.minecraft.client.renderer.state.level.LevelRenderState state, net.minecraft.world.phys.Vec3 cam, net.minecraft.client.CloudStatus status, int color, float height, int range, org.joml.Matrix4fc mv) {
+            return true;
+        }
+    };
+    //?}
+
     public WorkshopCoreNeoForgeClient(IEventBus modBus) {
         //? if >=26.1 {
         modBus.addListener((RegisterCustomEnvironmentEffectRendererEvent e) ->
@@ -22,6 +32,7 @@ public class WorkshopCoreNeoForgeClient {
         NeoForge.EVENT_BUS.addListener((ExtractLevelRenderStateEvent e) -> {
             if (BackdropClient.hasActive()) {
                 e.getRenderState().customSkyboxRenderer = BackdropSkybox.INSTANCE;
+                e.getRenderState().customCloudsRenderer = HIDE_CLOUDS;
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.LevelEvent.Unload e) -> {

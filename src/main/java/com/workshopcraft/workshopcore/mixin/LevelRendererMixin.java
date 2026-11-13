@@ -5,12 +5,14 @@ import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.framegraph.FramePass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.workshopcraft.workshopcore.backdrop.client.BackdropClient;
+import net.minecraft.client.CloudStatus;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.material.FogType;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -45,5 +47,12 @@ public class LevelRendererMixin {
         this.targets.main = pass.readsAndWrites(this.targets.main);
         pass.executes(() -> BackdropClient.render(RenderSystem.getModelViewMatrix(), () -> RenderSystem.setShaderFog(skyFog)));
         ci.cancel();
+    }
+
+    @Inject(method = "addCloudsPass", at = @At("HEAD"), cancellable = true)
+    private void workshopcore$hideClouds(FrameGraphBuilder frame, CloudStatus cloudStatus, Vec3 cameraPosition, long gameTime, float partialTicks, int cloudColor, float cloudHeight, int cloudRange, CallbackInfo ci) {
+        if (BackdropClient.hasActive()) {
+            ci.cancel();
+        }
     }
 }

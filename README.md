@@ -160,7 +160,7 @@ These exist so 1.20.1 code can keep the later component and network-codec names.
 
 Package `com.workshopcraft.workshopcore.backdrop`. Available on Minecraft 26.1.2 and later. Older version nodes still configure, but this feature is not compiled there yet.
 
-A backdrop is a named, data-driven sky. When one is set on a level it replaces the vanilla sun, moon, stars and end sky. Fog, clouds and weather stay vanilla. If nothing is set, the vanilla sky is left alone. There is no crossfade between backdrops in this version; a set is instant. A later version may add a fade.
+A backdrop is a named, data-driven sky. When one is set on a level it replaces the vanilla sun, moon, stars and end sky, and vanilla clouds are hidden. Fog and weather stay vanilla. Clearing the backdrop (or falling back to vanilla) shows clouds again. If nothing is set, the vanilla sky is left alone. There is no crossfade between backdrops in this version; a set is instant. A later version may add a fade.
 
 #### Data files
 
@@ -185,7 +185,7 @@ Layer types:
 - `color` (alias `sky_color`): solid sky disc. `color` is `#RRGGBB` or `#AARRGGBB`.
 - `gradient`: vertical wash. `top`, optional `horizon`, `bottom`.
 - `stars`: static starfield. `count`, `brightness`, optional `color`, `seed`. Optional `rotate_with_time` follows the day cycle. Optional `drift` is extra rotation in degrees per second.
-- `warp`: moving streaks. `count`, `speed`, `length`, optional `color`, `spread`. Optional `direction` is `{ "yaw", "pitch" }` in degrees; yaw 0 pitch 0 points toward -Z (north).
+- `warp`: streaks that all lie on rays from one fixed vanishing point in `direction` (default toward -Z: yaw 0 pitch 0). They travel from that point toward the viewer and grow longer and brighter as they pass, like a starfield jump. `count`, `speed`, `length`, optional `color`. Optional `spread` is the cone half-angle in degrees around that direction (default 25). Optional `direction` is `{ "yaw", "pitch" }` in degrees.
 - `body`: a textured disc. `texture` is an assets path. `size` is apparent diameter in degrees. `azimuth` and `altitude` are degrees (azimuth 0 is -Z, altitude 90 is zenith). Optional `spin` is revolutions per second. Optional `orbit_speed` (degrees per second) and `orbit_axis` (`{ "yaw", "pitch" }`, default straight up).
 
 Layers draw in list order, back to front. Textures come from resource packs.

@@ -220,57 +220,92 @@ public final class BackdropRenderer {
         }
     }
 
+    private static final float WARP_VANISH_DISTANCE = 160.0F;
+    private static final float WARP_START = 10.0F;
+    private static final float WARP_PAST = 50.0F;
+
+    /**
+     * Streaks lie on rays from a fixed vanishing point along {@code warp.direction()}.
+     * They travel from that point toward the viewer, growing longer and brighter as they pass.
+     * {@code spread} is the cone half-angle in degrees around that direction.
+     */
     private static CachedMesh buildWarp(BackdropLayer.Warp warp, float seconds) {
         int count = Math.max(0, Math.min(warp.count(), 400));
         RandomSource random = RandomSource.create(42L);
         int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
         try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * count * 4)) {
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-            Vector3f base = warp.direction().vector().normalize();
+            Vector3f axis = warp.direction().vector().normalize();
+            Vector3f vanish = new Vector3f(axis).mul(WARP_VANISH_DISTANCE);
+            Vector3f towardCamera = new Vector3f(axis).negate();
             int color = warp.color();
-            float travel = 180.0F;
+            float travel = WARP_VANISH_DISTANCE + WARP_PAST - WARP_START;
+            float speed = Math.max(0.0F, warp.speed()) * 40.0F;
+            float baseLen = Math.max(0.5F, warp.length());
             for (int i = 0; i < count; i++) {
-                Vector3f dir = jitter(base, warp.spread(), random);
-                Vector3f origin = randomOnSphere(random, 40.0F + random.nextFloat() * 80.0F);
+                Vector3f ray = cone(towardCamera, warp.spread(), random);
                 Vector3f side = new Vector3f();
-                dir.cross(origin.lengthSquared() < 0.001F ? new Vector3f(0, 1, 0) : origin, side);
+                ray.cross(Math.abs(ray.y) > 0.99F ? new Vector3f(1.0F, 0.0F, 0.0F) : new Vector3f(0.0F, 1.0F, 0.0F), side);
                 if (side.lengthSquared() < 1.0E-6F) {
-                    dir.cross(new Vector3f(0.0F, 1.0F, 0.0F), side);
+                    ray.cross(new Vector3f(1.0F, 0.0F, 0.0F), side);
                 }
-                side.normalize(0.2F);
-                float phase = (seconds * warp.speed() * 50.0F + random.nextFloat() * travel) % travel - travel * 0.5F;
-                Vector3f start = origin.fma(phase, dir, new Vector3f());
-                Vector3f end = start.fma(warp.length(), dir, new Vector3f());
-                builder.addVertex(start.x - side.x, start.y - side.y, start.z - side.z).setColor(color);
-                builder.addVertex(start.x + side.x, start.y + side.y, start.z + side.z).setColor(color);
-                builder.addVertex(end.x + side.x, end.y + side.y, end.z + side.z).setColor(color);
-                builder.addVertex(end.x - side.x, end.y - side.y, end.z - side.z).setColor(color);
+                side.normalize();
+                float dist = (seconds * speed + random.nextFloat() * travel) % travel + WARP_START;
+                float tTail = dist / WARP_VANISH_DISTANCE;
+                float segLen = baseLen * (0.35F + 1.8F * Mth.clamp(tTail, 0.0F, 1.2F));
+                float tHead = (dist + segLen) / WARP_VANISH_DISTANCE;
+                float width = 0.06F + 0.28F * Mth.clamp(tTail, 0.0F, 1.2F);
+                int tail = scaleColor(color, warpBrightness(tTail));
+                int head = scaleColor(color, warpBrightness(tHead));
+                Vector3f start = new Vector3f(vanish).fma(dist, ray);
+                Vector3f end = new Vector3f(vanish).fma(dist + segLen, ray);
+                Vector3f tailSide = new Vector3f(side).mul(width * 0.35F);
+                Vector3f headSide = new Vector3f(side).mul(width);
+                builder.addVertex(start.x - tailSide.x, start.y - tailSide.y, start.z - tailSide.z).setColor(tail);
+                builder.addVertex(start.x + tailSide.x, start.y + tailSide.y, start.z + tailSide.z).setColor(tail);
+                builder.addVertex(end.x + headSide.x, end.y + headSide.y, end.z + headSide.z).setColor(head);
+                builder.addVertex(end.x - headSide.x, end.y - headSide.y, end.z - headSide.z).setColor(head);
             }
             return cached("workshopcore warp", builder, count * 6);
         }
     }
 
-    private static Vector3f jitter(Vector3f base, float spreadDeg, RandomSource random) {
-        if (spreadDeg <= 0.0F) {
-            return new Vector3f(base);
-        }
-        float yaw = (random.nextFloat() - 0.5F) * 2.0F * spreadDeg * ((float) Math.PI / 180.0F);
-        float pitch = (random.nextFloat() - 0.5F) * 2.0F * spreadDeg * ((float) Math.PI / 180.0F);
-        Vector3f up = Math.abs(base.y) > 0.99F ? new Vector3f(1, 0, 0) : new Vector3f(0, 1, 0);
-        Vector3f right = new Vector3f(base).cross(up).normalize();
-        up = new Vector3f(right).cross(base).normalize();
-        return new Vector3f(base).add(right.mul((float) Math.sin(yaw), new Vector3f())).add(up.mul((float) Math.sin(pitch), new Vector3f())).normalize();
+    /** Unit vector in a cone of half-angle {@code spreadDeg} around {@code axis}. */
+    private static Vector3f cone(Vector3f axis, float spreadDeg, RandomSource random) {
+        float maxAngle = (float) Math.toRadians(Math.max(0.0F, spreadDeg));
+        float cosMax = (float) Math.cos(maxAngle);
+        float cosTheta = 1.0F - random.nextFloat() * (1.0F - cosMax);
+        float sinTheta = (float) Math.sqrt(Math.max(0.0F, 1.0F - cosTheta * cosTheta));
+        float phi = random.nextFloat() * ((float) Math.PI * 2.0F);
+        Vector3f up = Math.abs(axis.y) > 0.99F ? new Vector3f(1.0F, 0.0F, 0.0F) : new Vector3f(0.0F, 1.0F, 0.0F);
+        Vector3f right = new Vector3f(axis).cross(up).normalize();
+        up = new Vector3f(right).cross(axis).normalize();
+        return new Vector3f(axis).mul(cosTheta)
+                .add(right.mul(sinTheta * (float) Math.cos(phi), new Vector3f()))
+                .add(up.mul(sinTheta * (float) Math.sin(phi), new Vector3f()))
+                .normalize();
     }
 
-    private static Vector3f randomOnSphere(RandomSource random, float radius) {
-        float x, y, z, len2;
-        do {
-            x = random.nextFloat() * 2.0F - 1.0F;
-            y = random.nextFloat() * 2.0F - 1.0F;
-            z = random.nextFloat() * 2.0F - 1.0F;
-            len2 = x * x + y * y + z * z;
-        } while (len2 < 0.01F || len2 > 1.0F);
-        return new Vector3f(x, y, z).normalize(radius);
+    private static float warpBrightness(float t) {
+        if (t <= 0.05F) {
+            return 0.0F;
+        }
+        if (t < 1.0F) {
+            return t * t;
+        }
+        return Mth.clamp(1.6F - t, 0.0F, 1.0F);
+    }
+
+    private static int scaleColor(int argb, float brightness) {
+        brightness = Mth.clamp(brightness, 0.0F, 1.0F);
+        int a = (argb >>> 24) & 255;
+        int r = (argb >> 16) & 255;
+        int g = (argb >> 8) & 255;
+        int b = argb & 255;
+        return (int) (a * brightness) << 24
+                | (int) (r * brightness) << 16
+                | (int) (g * brightness) << 8
+                | (int) (b * brightness);
     }
 
     private static CachedMesh buildUnitQuad() {
