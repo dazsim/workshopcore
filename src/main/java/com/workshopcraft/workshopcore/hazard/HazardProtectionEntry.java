@@ -85,7 +85,11 @@ record HazardProtectionEntry(Identifier id, Identifier hazard, List<ItemFilter> 
         record Id(Identifier id) implements ItemFilter {
             @Override
             public boolean test(ItemStack stack) {
+                //? if >=26.1 {
                 return stack.is(net.minecraft.resources.ResourceKey.create(Registries.ITEM, id));
+                //?} else {
+                /*return stack.is(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id));*/
+                //?}
             }
 
             @Override

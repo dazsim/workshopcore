@@ -1,5 +1,7 @@
 package com.workshopcraft.workshopcore.backdrop;
 
+import com.workshopcraft.workshopcore.Ids;
+
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -113,7 +115,7 @@ public final class Backdrops {
         data.assign(fallback);
         if (fallback.isPresent()) {
             if (!exists(fallback.get())) {
-                LOGGER.warn("Default backdrop {} for {} is not loaded; sky will be vanilla until a valid id is set", fallback.get(), level.dimension().identifier());
+                LOGGER.warn("Default backdrop {} for {} is not loaded; sky will be vanilla until a valid id is set", fallback.get(), Ids.of(level.dimension()));
             }
             BackdropEvents.fire(level, Optional.empty(), fallback);
             BackdropNetworking.syncLevel(level);
@@ -150,14 +152,14 @@ public final class Backdrops {
     }
 
     static Optional<Identifier> defaultFor(ServerLevel level) {
-        Identifier dimension = level.dimension().identifier();
+        Identifier dimension = Ids.of(level.dimension());
         Identifier fromDimension = DEFAULTS.dimensions().get(dimension);
         if (fromDimension != null) {
             return Optional.of(fromDimension);
         }
         ResourceKey<DimensionType> typeKey = level.dimensionTypeRegistration().unwrapKey().orElse(null);
         if (typeKey != null) {
-            Identifier fromType = DEFAULTS.dimensionTypes().get(typeKey.identifier());
+            Identifier fromType = DEFAULTS.dimensionTypes().get(Ids.of(typeKey));
             if (fromType != null) {
                 return Optional.of(fromType);
             }

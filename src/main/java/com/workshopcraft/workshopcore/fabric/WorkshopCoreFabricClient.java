@@ -24,6 +24,22 @@ public class WorkshopCoreFabricClient implements ClientModInitializer {
                 com.workshopcraft.workshopcore.hazard.client.HazeClient::renderTint);
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register(
                 (handler, client) -> com.workshopcraft.workshopcore.hazard.client.HazeClient.clear());
+        //?} else {
+        /*net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
+                com.workshopcraft.workshopcore.backdrop.BackdropSyncPacket.TYPE,
+                (payload, context) -> context.client().execute(payload::handle));
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
+                com.workshopcraft.workshopcore.backdrop.BackdropDefsPacket.TYPE,
+                (payload, context) -> context.client().execute(payload::handle));
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register(
+                (handler, client) -> com.workshopcraft.workshopcore.backdrop.client.BackdropClient.clear());
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
+                com.workshopcraft.workshopcore.hazard.HazeSyncPacket.TYPE,
+                (payload, context) -> context.client().execute(payload::handle));
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register(
+                (handler, client) -> com.workshopcraft.workshopcore.hazard.client.HazeClient.clear());
+        net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback.EVENT.register((graphics, tickDelta) ->
+                com.workshopcraft.workshopcore.hazard.client.HazeClient.renderTint(graphics, net.minecraft.client.Minecraft.getInstance().getTimer()));*/
         //?}
     }
 }

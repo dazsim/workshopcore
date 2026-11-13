@@ -31,6 +31,10 @@ public final class HazardDamage {
         if (!(entity.level() instanceof ServerLevel serverLevel)) {
             return false;
         }
+        //? if >=26.1 {
         return entity.hurtServer(serverLevel, source(serverLevel, type), amount);
+        //?} else {
+        /*return entity.hurt(source(serverLevel, type), amount);*/
+        //?}
     }
 }

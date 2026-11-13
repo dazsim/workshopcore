@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import com.workshopcraft.workshopcore.Ids;
 import com.workshopcraft.workshopcore.WorkshopCore;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -12,7 +13,9 @@ import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+//? if >=26.1 {
 import net.minecraft.server.permissions.Permissions;
+//?}
 
 public final class BackdropCommands {
     private static final DynamicCommandExceptionType UNKNOWN = new DynamicCommandExceptionType(
@@ -24,7 +27,13 @@ public final class BackdropCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal(WorkshopCore.MOD_ID)
-                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+                .requires(source ->
+                        //? if >=26.1 {
+                        source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
+                        //?} else {
+                        /*source.hasPermission(2)*/
+                        //?}
+                )
                 .then(Commands.literal("backdrop")
                         .then(Commands.literal("get").executes(context -> get(context.getSource())))
                         .then(Commands.literal("clear")
@@ -42,8 +51,8 @@ public final class BackdropCommands {
     private static int get(CommandSourceStack source) {
         ServerLevel level = source.getLevel();
         Backdrops.get(level).ifPresentOrElse(
-                id -> source.sendSuccess(() -> Component.literal("Backdrop for " + level.dimension().identifier() + " is " + id), false),
-                () -> source.sendSuccess(() -> Component.literal("Backdrop for " + level.dimension().identifier() + " is vanilla"), false)
+                id -> source.sendSuccess(() -> Component.literal("Backdrop for " + Ids.of(level.dimension()) + " is " + id), false),
+                () -> source.sendSuccess(() -> Component.literal("Backdrop for " + Ids.of(level.dimension()) + " is vanilla"), false)
         );
         return 1;
     }
@@ -55,7 +64,7 @@ public final class BackdropCommands {
         } else {
             Backdrops.clear(level, ticks);
         }
-        source.sendSuccess(() -> Component.literal("Cleared backdrop for " + level.dimension().identifier()), true);
+        source.sendSuccess(() -> Component.literal("Cleared backdrop for " + Ids.of(level.dimension())), true);
         return 1;
     }
 
@@ -69,7 +78,7 @@ public final class BackdropCommands {
         } else {
             Backdrops.set(level, id, ticks);
         }
-        source.sendSuccess(() -> Component.literal("Set backdrop for " + level.dimension().identifier() + " to " + id), true);
+        source.sendSuccess(() -> Component.literal("Set backdrop for " + Ids.of(level.dimension()) + " to " + id), true);
         return 1;
     }
 

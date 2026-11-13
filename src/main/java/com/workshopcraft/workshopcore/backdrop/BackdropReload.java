@@ -10,7 +10,9 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
+//? if >=26.1 {
 import net.minecraft.util.StrictJsonParser;
+//?}
 import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +37,9 @@ public final class BackdropReload extends SimplePreparableReloadListener<Backdro
     @Override
     protected Prepared prepare(ResourceManager manager, ProfilerFiller profiler) {
         Map<Identifier, Backdrop> defs = new HashMap<>();
-        //? if fabric && >=26.3 {
+        //? if <26.1 {
+        /*com.workshopcraft.workshopcore.ResourceScan.scanDirectory(manager, BACKDROPS, JsonOps.INSTANCE, Backdrop.CODEC, defs);*/
+        //?} else if fabric && >=26.3 {
         /*com.workshopcraft.workshopcore.ResourceScan.scanDirectory(manager, BACKDROPS, JsonOps.INSTANCE, Backdrop.CODEC, defs);*/
         //?} else {
         SimpleJsonResourceReloadListener.scanDirectory(manager, BACKDROPS, JsonOps.INSTANCE, Backdrop.CODEC, defs);
@@ -57,7 +61,13 @@ public final class BackdropReload extends SimplePreparableReloadListener<Backdro
         BackdropDefaults defaults = BackdropDefaults.empty();
         for (Resource resource : defaultFiles) {
             try (Reader reader = resource.openAsReader()) {
-                var parsed = BackdropDefaults.CODEC.parse(JsonOps.INSTANCE, StrictJsonParser.parse(reader));
+                var parsed = BackdropDefaults.CODEC.parse(JsonOps.INSTANCE,
+                        //? if >=26.1 {
+                        StrictJsonParser.parse(reader)
+                        //?} else {
+                        /*com.google.gson.JsonParser.parseReader(reader)*/
+                        //?}
+                );
                 BackdropDefaults current = defaults;
                 defaults = parsed.resultOrPartial(message -> LOGGER.error("Couldn't parse backdrop defaults from {}: {}", resource.sourcePackId(), message))
                         .map(next -> next.mergeOver(current))

@@ -8,7 +8,9 @@ import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
+//? if >=26.1 {
 import net.minecraft.util.StrictJsonParser;
+//?}
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +36,13 @@ public final class ResourceScan {
             Identifier location = entry.getKey();
             Identifier id = lister.fileToId(location);
             try (Reader reader = entry.getValue().openAsReader()) {
-                codec.parse(ops, StrictJsonParser.parse(reader))
+                codec.parse(ops,
+                        //? if >=26.1 {
+                        StrictJsonParser.parse(reader)
+                        //?} else {
+                        /*com.google.gson.JsonParser.parseReader(reader)*/
+                        //?}
+                )
                         .ifSuccess(value -> {
                             if (result.putIfAbsent(id, value) != null) {
                                 throw new IllegalStateException("Duplicate data file ignored with ID " + id);

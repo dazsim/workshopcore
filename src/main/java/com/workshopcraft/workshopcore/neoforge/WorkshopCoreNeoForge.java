@@ -13,14 +13,13 @@ public class WorkshopCoreNeoForge {
                 e.register(net.minecraft.core.registries.Registries.TICKET_TYPE, h ->
                         h.register(com.workshopcraft.workshopcore.compat.ChunkTickets.ID,
                                 com.workshopcraft.workshopcore.compat.ChunkTickets.TYPE)));
+        //?}
         initBackdrops(modBus);
         initHazards(modBus);
         initScrewdrivers(modBus);
-        //?}
         LoggerFactory.getLogger(WorkshopCore.MOD_ID).info("Workshop Core {}", WorkshopCore.API_VERSION);
     }
 
-    //? if >=26.1 {
     private static void initBackdrops(IEventBus modBus) {
         com.workshopcraft.workshopcore.backdrop.BackdropNetworking.setHooks(
                 net.neoforged.neoforge.network.PacketDistributor::sendToPlayer,
@@ -36,8 +35,13 @@ public class WorkshopCoreNeoForge {
                         com.workshopcraft.workshopcore.hazard.HazeSyncPacket.STREAM_CODEC,
                         (payload, ctx) -> ctx.enqueueWork(payload::handle)));
         var game = net.neoforged.neoforge.common.NeoForge.EVENT_BUS;
+        //? if >=26.1 {
         game.addListener((net.neoforged.neoforge.event.AddServerReloadListenersEvent e) ->
                 e.addListener(com.workshopcraft.workshopcore.backdrop.BackdropReload.ID, new com.workshopcraft.workshopcore.backdrop.BackdropReload()));
+        //?} else {
+        /*game.addListener((net.neoforged.neoforge.event.AddReloadListenerEvent e) ->
+                e.addListener(new com.workshopcraft.workshopcore.backdrop.BackdropReload()));*/
+        //?}
         game.addListener((net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                 com.workshopcraft.workshopcore.backdrop.BackdropCommands.register(e.getDispatcher()));
         game.addListener((net.neoforged.neoforge.event.level.LevelEvent.Load e) -> {
@@ -70,9 +74,14 @@ public class WorkshopCoreNeoForge {
         com.workshopcraft.workshopcore.hazard.HazeNetworking.setHook(
                 net.neoforged.neoforge.network.PacketDistributor::sendToPlayer);
         var game = net.neoforged.neoforge.common.NeoForge.EVENT_BUS;
+        //? if >=26.1 {
         game.addListener((net.neoforged.neoforge.event.AddServerReloadListenersEvent e) ->
                 e.addListener(com.workshopcraft.workshopcore.hazard.HazardProtectionReload.ID,
                         new com.workshopcraft.workshopcore.hazard.HazardProtectionReload()));
+        //?} else {
+        /*game.addListener((net.neoforged.neoforge.event.AddReloadListenerEvent e) ->
+                e.addListener(new com.workshopcraft.workshopcore.hazard.HazardProtectionReload()));*/
+        //?}
         game.addListener((net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                 com.workshopcraft.workshopcore.hazard.HazardCommands.register(e.getDispatcher()));
         game.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent e) -> {
@@ -112,5 +121,4 @@ public class WorkshopCoreNeoForge {
                     }
                 });
     }
-    //?}
 }

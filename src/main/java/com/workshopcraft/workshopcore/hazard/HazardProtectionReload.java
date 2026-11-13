@@ -25,7 +25,9 @@ public final class HazardProtectionReload extends SimplePreparableReloadListener
     @Override
     protected List<HazardProtectionEntry> prepare(ResourceManager manager, ProfilerFiller profiler) {
         Map<Identifier, HazardProtectionEntry> parsed = new HashMap<>();
-        //? if fabric && >=26.3 {
+        //? if <26.1 {
+        /*com.workshopcraft.workshopcore.ResourceScan.scanDirectory(manager, FILES, JsonOps.INSTANCE, HazardProtectionEntry.CODEC, parsed);*/
+        //?} else if fabric && >=26.3 {
         /*com.workshopcraft.workshopcore.ResourceScan.scanDirectory(manager, FILES, JsonOps.INSTANCE, HazardProtectionEntry.CODEC, parsed);*/
         //?} else {
         SimpleJsonResourceReloadListener.scanDirectory(manager, FILES, JsonOps.INSTANCE, HazardProtectionEntry.CODEC, parsed);

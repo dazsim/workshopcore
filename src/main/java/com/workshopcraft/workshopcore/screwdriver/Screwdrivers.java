@@ -92,8 +92,11 @@ public final class Screwdrivers {
         }
         Item alias = new AliasScrewdriverItem(properties(oldId)
                 .stacksTo(1)
+                //? if >=26.1 {
                 .overrideDescription("item.workshopcore.screwdriver")
-                .component(DataComponents.ITEM_MODEL, ITEM_ID));
+                .component(DataComponents.ITEM_MODEL, ITEM_ID)
+                //?}
+                );
         net.minecraft.core.Registry.register(BuiltInRegistries.ITEM, oldId, alias);
         //?} else {
         /*BuiltInRegistries.ITEM.addAlias(oldId, ITEM_ID);*/
@@ -146,7 +149,11 @@ public final class Screwdrivers {
     }
 
     private static Item.Properties properties(Identifier id) {
+        //? if >=26.1 {
         return new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id));
+        //?} else {
+        /*return new Item.Properties();*/
+        //?}
     }
 
     private static ItemStack convertInHand(Player player, InteractionHand hand, ItemStack held) {

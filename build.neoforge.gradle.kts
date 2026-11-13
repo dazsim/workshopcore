@@ -17,8 +17,12 @@ val requiredJava = when {
 }
 
 sourceSets.main {
-    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/forge/**", "com/workshopcraft/workshopcore/mixin/**")
-    if (!modern) java.exclude("com/workshopcraft/workshopcore/backdrop/**", "com/workshopcraft/workshopcore/hazard/**", "com/workshopcraft/workshopcore/screwdriver/**")
+    java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/forge/**")
+    if (modern) {
+        java.exclude("com/workshopcraft/workshopcore/mixin/**")
+    } else {
+        java.exclude("com/workshopcraft/workshopcore/neoforge/BackdropSkybox.java")
+    }
     if (!modern) applyOverlays(rootProject.file("."), overlayChain(mc, "neoforge"))
 }
 
@@ -63,7 +67,8 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/neoforge.mods.toml") { expand(props) }
-        exclude("fabric.mod.json", "META-INF/mods.toml", "workshopcore.accesswidener", "workshopcore.mixins.json")
+        exclude("fabric.mod.json", "META-INF/mods.toml", "workshopcore.accesswidener")
+        if (modern) exclude("workshopcore.mixins.json")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 

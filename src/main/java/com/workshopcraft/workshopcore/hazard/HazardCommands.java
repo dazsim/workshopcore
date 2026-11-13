@@ -14,7 +14,9 @@ import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+//? if >=26.1 {
 import net.minecraft.server.permissions.Permissions;
+//?}
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 
@@ -28,7 +30,13 @@ public final class HazardCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal(WorkshopCore.MOD_ID)
-                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+                .requires(source ->
+                        //? if >=26.1 {
+                        source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
+                        //?} else {
+                        /*source.hasPermission(2)*/
+                        //?}
+                )
                 .then(Commands.literal("haze")
                         .then(Commands.literal("clear")
                                 .executes(context -> clear(context.getSource(), 20))
