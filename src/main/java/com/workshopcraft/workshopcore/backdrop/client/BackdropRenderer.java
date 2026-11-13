@@ -29,7 +29,10 @@ import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.util.ArrayList;
+import java.util.function.Predicate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
@@ -51,6 +54,10 @@ public final class BackdropRenderer {
     }
 
     public static void render(Backdrop backdrop, Matrix4fc modelView) {
+        render(backdrop, modelView, 1.0F);
+    }
+
+    public static void render(Backdrop backdrop, Matrix4fc modelView, float alpha) {
         ensureSkyDisc();
         Matrix4fStack stack = RenderSystem.getModelViewStack();
         stack.pushMatrix();
@@ -58,28 +65,81 @@ public final class BackdropRenderer {
         float seconds = seconds();
         float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
         for (BackdropLayer layer : backdrop.layers()) {
-            switch (layer) {
-                case BackdropLayer.Color color -> renderColor(color);
-                case BackdropLayer.Gradient gradient -> renderGradient(gradient);
-                case BackdropLayer.Stars stars -> renderStars(stars, stack, seconds, partial);
-                case BackdropLayer.Warp warp -> renderWarp(warp, stack, seconds);
-                case BackdropLayer.Body body -> renderBody(body, stack, seconds);
+            renderLayer(layer, stack, seconds, partial, alpha);
+        }
+        stack.popMatrix();
+    }
+
+    static void renderBackground(Backdrop backdrop, float alpha) {
+        ensureSkyDisc();
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (layer instanceof BackdropLayer.Color color) {
+                renderColor(color, alpha);
+            } else if (layer instanceof BackdropLayer.Gradient gradient) {
+                renderGradient(gradient, alpha);
+            }
+        }
+    }
+
+    static void renderForeground(Backdrop backdrop, Matrix4fc modelView, float alpha, boolean skipStars, boolean skipWarp) {
+        renderLayers(backdrop, modelView, alpha, layer -> {
+            if (layer instanceof BackdropLayer.Color || layer instanceof BackdropLayer.Gradient) {
+                return false;
+            }
+            if (skipStars && layer instanceof BackdropLayer.Stars) {
+                return false;
+            }
+            if (skipWarp && layer instanceof BackdropLayer.Warp) {
+                return false;
+            }
+            return true;
+        });
+    }
+
+    static void renderLayers(Backdrop backdrop, Matrix4fc modelView, float alpha, Predicate<BackdropLayer> include) {
+        if (backdrop == null || alpha <= 0.0F) {
+            return;
+        }
+        ensureSkyDisc();
+        Matrix4fStack stack = RenderSystem.getModelViewStack();
+        stack.pushMatrix();
+        stack.set(modelView);
+        float seconds = seconds();
+        float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (include.test(layer)) {
+                renderLayer(layer, stack, seconds, partial, alpha);
             }
         }
         stack.popMatrix();
     }
 
-    private static void renderColor(BackdropLayer.Color color) {
-        drawFan(RenderPipelines.SKY, skyDisc, 10, ARGB.vector4fFromARGB32(color.color()), RenderSystem.getModelViewMatrix());
+    private static void renderLayer(BackdropLayer layer, Matrix4fStack stack, float seconds, float partial, float alpha) {
+        if (alpha <= 0.0F) {
+            return;
+        }
+        switch (layer) {
+            case BackdropLayer.Color color -> renderColor(color, alpha);
+            case BackdropLayer.Gradient gradient -> renderGradient(gradient, alpha);
+            case BackdropLayer.Stars stars -> renderStars(stars, stack, seconds, partial, alpha);
+            case BackdropLayer.Warp warp -> renderWarp(warp, stack, seconds, alpha);
+            case BackdropLayer.Body body -> renderBody(body, stack, seconds, alpha);
+        }
     }
 
-    private static void renderGradient(BackdropLayer.Gradient gradient) {
+    private static void renderColor(BackdropLayer.Color color, float alpha) {
+        Vector4f tint = ARGB.vector4fFromARGB32(color.color());
+        tint.w *= alpha;
+        drawFan(RenderPipelines.SKY, skyDisc, 10, tint, RenderSystem.getModelViewMatrix());
+    }
+
+    private static void renderGradient(BackdropLayer.Gradient gradient, float alpha) {
         String key = "grad:" + gradient.top() + ":" + gradient.horizon() + ":" + gradient.bottom();
         CachedMesh mesh = MESHES.computeIfAbsent(key, k -> buildGradient(gradient));
-        drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, 1), RenderSystem.getModelViewMatrix(), null);
+        drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, alpha), RenderSystem.getModelViewMatrix(), null);
     }
 
-    private static void renderStars(BackdropLayer.Stars stars, Matrix4fStack stack, float seconds, float partial) {
+    private static void renderStars(BackdropLayer.Stars stars, Matrix4fStack stack, float seconds, float partial, float alpha) {
         String key = "stars:" + stars.count() + ":" + stars.seed();
         CachedMesh mesh = MESHES.computeIfAbsent(key, k -> buildStars(stars));
         stack.pushMatrix();
@@ -90,20 +150,21 @@ public final class BackdropRenderer {
             stack.rotateX(starAngle(partial));
         }
         Vector4f tint = colorToVec(stars.color(), stars.brightness());
+        tint.w *= alpha;
         drawIndexed(RenderPipelines.STARS, mesh, tint, stack, null);
         stack.popMatrix();
     }
 
-    private static void renderWarp(BackdropLayer.Warp warp, Matrix4fStack stack, float seconds) {
+    private static void renderWarp(BackdropLayer.Warp warp, Matrix4fStack stack, float seconds, float alpha) {
         CachedMesh mesh = buildWarp(warp, seconds);
         try {
-            drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, 1), stack, null);
+            drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, alpha), stack, null);
         } finally {
             mesh.close();
         }
     }
 
-    private static void renderBody(BackdropLayer.Body body, Matrix4fStack stack, float seconds) {
+    private static void renderBody(BackdropLayer.Body body, Matrix4fStack stack, float seconds, float alpha) {
         CachedMesh mesh = MESHES.computeIfAbsent("body", k -> buildUnitQuad());
         PoseStack pose = new PoseStack();
         if (body.orbitSpeed() != 0.0F) {
@@ -121,7 +182,7 @@ public final class BackdropRenderer {
         float scale = 2.0F * 100.0F * (float) Math.tan(Math.toRadians(Math.max(0.1, body.size())) / 2.0);
         stack.scale(scale, 1.0F, scale);
         AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(body.texture());
-        drawIndexed(RenderPipelines.CELESTIAL, mesh, new Vector4f(1, 1, 1, 1), stack, texture);
+        drawIndexed(RenderPipelines.CELESTIAL, mesh, new Vector4f(1, 1, 1, alpha), stack, texture);
         stack.popMatrix();
     }
 
@@ -358,6 +419,249 @@ public final class BackdropRenderer {
             pass.setIndexBuffer(indices, QUADS.type());
             pass.drawIndexed(0, 0, mesh.indexCount, 1);
         }
+    }
+
+
+    static float currentSeconds() {
+        return seconds();
+    }
+
+    static float currentPartial() {
+        return Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+    }
+
+    static boolean hasWarp(Backdrop backdrop) {
+        if (backdrop == null) {
+            return false;
+        }
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (layer instanceof BackdropLayer.Warp) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean hasStars(Backdrop backdrop) {
+        if (backdrop == null) {
+            return false;
+        }
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (layer instanceof BackdropLayer.Stars) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static BackdropLayer.Warp firstWarp(Backdrop backdrop) {
+        if (backdrop == null) {
+            return null;
+        }
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (layer instanceof BackdropLayer.Warp warp) {
+                return warp;
+            }
+        }
+        return null;
+    }
+
+    static List<StarSample> snapshotStars(Backdrop backdrop, float seconds, float partial) {
+        List<StarSample> out = new ArrayList<>();
+        if (backdrop == null) {
+            return out;
+        }
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (layer instanceof BackdropLayer.Stars stars) {
+                snapshotStars(stars, seconds, partial, out);
+            }
+        }
+        return out;
+    }
+
+    private static void snapshotStars(BackdropLayer.Stars stars, float seconds, float partial, List<StarSample> out) {
+        int count = Math.max(0, Math.min(stars.count(), 8000));
+        RandomSource random = RandomSource.create(stars.seed());
+        Matrix4f rotation = new Matrix4f();
+        if (stars.drift() != 0.0F) {
+            rotation.rotateY(stars.drift() * seconds * ((float) Math.PI / 180.0F));
+        }
+        if (stars.rotateWithTime()) {
+            rotation.rotateX(starAngle(partial));
+        }
+        int color = scaleColor(stars.color(), stars.brightness());
+        for (int i = 0; i < count; i++) {
+            float x = random.nextFloat() * 2.0F - 1.0F;
+            float y = random.nextFloat() * 2.0F - 1.0F;
+            float z = random.nextFloat() * 2.0F - 1.0F;
+            float len2 = x * x + y * y + z * z;
+            if (len2 < 0.01F || len2 > 1.0F) {
+                i--;
+                continue;
+            }
+            float size = 0.15F + random.nextFloat() * 0.1F;
+            // consume the same rotation sample as buildStars
+            random.nextFloat();
+            Vector3f center = new Vector3f(x, y, z).normalize(100.0F);
+            rotation.transformPosition(center);
+            out.add(new StarSample(center, size, color));
+        }
+    }
+
+    static List<StreakSample> snapshotWarp(Backdrop backdrop, float seconds) {
+        List<StreakSample> out = new ArrayList<>();
+        if (backdrop == null) {
+            return out;
+        }
+        for (BackdropLayer layer : backdrop.layers()) {
+            if (layer instanceof BackdropLayer.Warp warp) {
+                snapshotWarp(warp, seconds, out);
+            }
+        }
+        return out;
+    }
+
+    private static void snapshotWarp(BackdropLayer.Warp warp, float seconds, List<StreakSample> out) {
+        int count = Math.max(0, Math.min(warp.count(), 400));
+        RandomSource random = RandomSource.create(42L);
+        Vector3f axis = warp.direction().vector().normalize();
+        Vector3f vanish = new Vector3f(axis).mul(WARP_VANISH_DISTANCE);
+        Vector3f towardCamera = new Vector3f(axis).negate();
+        int color = warp.color();
+        float travel = WARP_VANISH_DISTANCE + WARP_PAST - WARP_START;
+        float speed = Math.max(0.0F, warp.speed()) * 40.0F;
+        float baseLen = Math.max(0.5F, warp.length());
+        for (int i = 0; i < count; i++) {
+            Vector3f ray = cone(towardCamera, warp.spread(), random);
+            Vector3f side = new Vector3f();
+            ray.cross(Math.abs(ray.y) > 0.99F ? new Vector3f(1.0F, 0.0F, 0.0F) : new Vector3f(0.0F, 1.0F, 0.0F), side);
+            if (side.lengthSquared() < 1.0E-6F) {
+                ray.cross(new Vector3f(1.0F, 0.0F, 0.0F), side);
+            }
+            side.normalize();
+            float dist = (seconds * speed + random.nextFloat() * travel) % travel + WARP_START;
+            float tTail = dist / WARP_VANISH_DISTANCE;
+            float segLen = baseLen * (0.35F + 1.8F * Mth.clamp(tTail, 0.0F, 1.2F));
+            float width = 0.06F + 0.28F * Mth.clamp(tTail, 0.0F, 1.2F);
+            out.add(new StreakSample(new Vector3f(vanish), new Vector3f(ray), new Vector3f(side), dist, segLen, width, color, speed));
+        }
+    }
+
+    static List<StreakSample> starsAsStreaks(List<StarSample> stars, BackdropLayer.Warp warp) {
+        List<StreakSample> out = new ArrayList<>();
+        if (warp == null) {
+            return out;
+        }
+        Vector3f axis = warp.direction().vector().normalize();
+        Vector3f vanish = new Vector3f(axis).mul(WARP_VANISH_DISTANCE);
+        float speed = Math.max(0.0F, warp.speed()) * 40.0F;
+        float baseLen = Math.max(0.5F, warp.length());
+        for (StarSample star : stars) {
+            Vector3f ray = new Vector3f(star.pos()).sub(vanish);
+            if (ray.lengthSquared() < 1.0E-6F) {
+                ray.set(axis).negate();
+            }
+            ray.normalize();
+            Vector3f side = new Vector3f();
+            ray.cross(Math.abs(ray.y) > 0.99F ? new Vector3f(1.0F, 0.0F, 0.0F) : new Vector3f(0.0F, 1.0F, 0.0F), side);
+            if (side.lengthSquared() < 1.0E-6F) {
+                ray.cross(new Vector3f(1.0F, 0.0F, 0.0F), side);
+            }
+            side.normalize();
+            float dist = star.pos().distance(vanish);
+            out.add(new StreakSample(new Vector3f(vanish), ray, side, dist, Math.max(star.size(), 0.2F), Math.max(star.size() * 0.5F, 0.08F), star.color(), speed, baseLen));
+        }
+        return out;
+    }
+
+    static void drawStreaks(List<StreakDraw> streaks, Matrix4fc modelView, float alpha) {
+        if (streaks.isEmpty() || alpha <= 0.0F) {
+            return;
+        }
+        int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
+        try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * streaks.size() * 4)) {
+            BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            int drawn = 0;
+            for (StreakDraw streak : streaks) {
+                if (streak.length() <= 0.01F || streak.brightness() <= 0.0F) {
+                    continue;
+                }
+                Vector3f start = new Vector3f(streak.vanish()).fma(streak.dist(), streak.ray());
+                Vector3f end = new Vector3f(streak.vanish()).fma(streak.dist() + streak.length(), streak.ray());
+                Vector3f tailSide = new Vector3f(streak.side()).mul(streak.width() * 0.35F);
+                Vector3f headSide = new Vector3f(streak.side()).mul(streak.width());
+                float tTail = streak.dist() / WARP_VANISH_DISTANCE;
+                float tHead = (streak.dist() + streak.length()) / WARP_VANISH_DISTANCE;
+                int tail = scaleColor(streak.color(), warpBrightness(tTail) * streak.brightness());
+                int head = scaleColor(streak.color(), warpBrightness(Math.max(tHead, tTail)) * streak.brightness());
+                builder.addVertex(start.x - tailSide.x, start.y - tailSide.y, start.z - tailSide.z).setColor(tail);
+                builder.addVertex(start.x + tailSide.x, start.y + tailSide.y, start.z + tailSide.z).setColor(tail);
+                builder.addVertex(end.x + headSide.x, end.y + headSide.y, end.z + headSide.z).setColor(head);
+                builder.addVertex(end.x - headSide.x, end.y - headSide.y, end.z - headSide.z).setColor(head);
+                drawn++;
+            }
+            if (drawn == 0) {
+                return;
+            }
+            CachedMesh mesh = cached("workshopcore transition streaks", builder, drawn * 6);
+            try {
+                drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, alpha), modelView, null);
+            } finally {
+                mesh.close();
+            }
+        }
+    }
+
+    static void drawStarPoints(List<StarSample> stars, Matrix4fc modelView, float alpha) {
+        if (stars.isEmpty() || alpha <= 0.0F) {
+            return;
+        }
+        int vtxSize = DefaultVertexFormat.POSITION_COLOR.getVertexSize();
+        try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(vtxSize * stars.size() * 4)) {
+            BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            for (StarSample star : stars) {
+                Vector3f center = star.pos();
+                float size = star.size();
+                Vector3f toward = new Vector3f(center).negate().normalize();
+                Vector3f side = new Vector3f();
+                toward.cross(Math.abs(toward.y) > 0.99F ? new Vector3f(1.0F, 0.0F, 0.0F) : new Vector3f(0.0F, 1.0F, 0.0F), side);
+                if (side.lengthSquared() < 1.0E-6F) {
+                    toward.cross(new Vector3f(1.0F, 0.0F, 0.0F), side);
+                }
+                side.normalize();
+                Vector3f up = new Vector3f(side).cross(toward).normalize();
+                Vector3f a = new Vector3f(center).fma(size, side).fma(-size, up);
+                Vector3f b = new Vector3f(center).fma(size, side).fma(size, up);
+                Vector3f c = new Vector3f(center).fma(-size, side).fma(size, up);
+                Vector3f d = new Vector3f(center).fma(-size, side).fma(-size, up);
+                builder.addVertex(a).setColor(star.color());
+                builder.addVertex(b).setColor(star.color());
+                builder.addVertex(c).setColor(star.color());
+                builder.addVertex(d).setColor(star.color());
+            }
+            CachedMesh mesh = cached("workshopcore transition stars", builder, stars.size() * 6);
+            try {
+                drawIndexed(RenderPipelines.DEBUG_QUADS, mesh, new Vector4f(1, 1, 1, alpha), modelView, null);
+            } finally {
+                mesh.close();
+            }
+        }
+    }
+
+    static float vanishDistance() {
+        return WARP_VANISH_DISTANCE;
+    }
+
+    record StarSample(Vector3f pos, float size, int color) {
+    }
+
+    record StreakSample(Vector3f vanish, Vector3f ray, Vector3f side, float dist, float length, float width, int color, float speed, float growLength) {
+        StreakSample(Vector3f vanish, Vector3f ray, Vector3f side, float dist, float length, float width, int color, float speed) {
+            this(vanish, ray, side, dist, length, width, color, speed, length);
+        }
+    }
+
+    record StreakDraw(Vector3f vanish, Vector3f ray, Vector3f side, float dist, float length, float width, int color, float brightness) {
     }
 
     private static Vector4f colorToVec(int argb, float brightness) {

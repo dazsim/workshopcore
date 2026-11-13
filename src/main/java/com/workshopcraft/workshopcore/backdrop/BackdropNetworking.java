@@ -33,16 +33,25 @@ public final class BackdropNetworking {
         sendToPlayer.accept(player, new BackdropDefsPacket(Backdrops.copyDefs()));
     }
 
+    /** Instant assignment (login, reload, dimension change). */
     public static void sendAssignment(ServerPlayer player, ResourceKey<Level> dimension, Optional<Identifier> id) {
-        sendToPlayer.accept(player, new BackdropSyncPacket(dimension, id));
+        sendAssignment(player, dimension, id, 0);
+    }
+
+    public static void sendAssignment(ServerPlayer player, ResourceKey<Level> dimension, Optional<Identifier> id, int transitionTicks) {
+        sendToPlayer.accept(player, new BackdropSyncPacket(dimension, id, transitionTicks));
     }
 
     public static void syncLevel(ServerLevel level) {
-        sendToLevel.accept(level, new BackdropSyncPacket(level.dimension(), Backdrops.get(level)));
+        syncLevel(level, 0);
+    }
+
+    public static void syncLevel(ServerLevel level, int transitionTicks) {
+        sendToLevel.accept(level, new BackdropSyncPacket(level.dimension(), Backdrops.get(level), transitionTicks));
     }
 
     public static void forgetDimension(MinecraftServer server, ResourceKey<Level> dimension) {
-        BackdropSyncPacket packet = new BackdropSyncPacket(dimension, Optional.empty());
+        BackdropSyncPacket packet = new BackdropSyncPacket(dimension, Optional.empty(), 0);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToPlayer.accept(player, packet);
         }

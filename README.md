@@ -2,7 +2,7 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.3.0.
+Mod id: `workshopcore`. Version 0.4.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
@@ -17,12 +17,12 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.3.0"`
+- `API_VERSION` - the API version string, currently `"0.4.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
-if (WorkshopCore.isAtLeast("0.3.0")) {
-    // safe to call 0.2 API
+if (WorkshopCore.isAtLeast("0.4.0")) {
+    // safe to call 0.4 API
 }
 ```
 
@@ -160,7 +160,16 @@ These exist so 1.20.1 code can keep the later component and network-codec names.
 
 Package `com.workshopcraft.workshopcore.backdrop`. Available on Minecraft 26.1.2 and later. Older version nodes still configure, but this feature is not compiled there yet.
 
-A backdrop is a named, data-driven sky. When one is set on a level it replaces the vanilla sun, moon, stars and end sky, and vanilla clouds are hidden. Fog and weather stay vanilla. Clearing the backdrop (or falling back to vanilla) shows clouds again. If nothing is set, the vanilla sky is left alone. There is no crossfade between backdrops in this version; a set is instant. A later version may add a fade.
+A backdrop is a named, data-driven sky. When one is set on a level it replaces the vanilla sun, moon, stars and end sky, and vanilla clouds are hidden. Fog and weather stay vanilla. Clearing the backdrop (or falling back to vanilla) shows clouds again. If nothing is set, the vanilla sky is left alone.
+
+When `Backdrops.set` or `clear` changes the sky, the client runs a transition of N ticks (the assignment itself is applied immediately on the server). Login, datapack reload, dimension change, and level unload stay instant so a joining player or a recreated dimension does not play an entrance fade.
+
+If one side has a warp layer, the default `auto` mode morphs between a stationary starfield and warp:
+
+- Stationary to warp: existing stars start moving away from the warp vanishing point, accelerate, and elongate into streaks, while the destination warp field fades in over the same duration.
+- Warp to stationary (or vanilla): new streaks stop spawning. Streaks already in flight decelerate, shorten, and fade out. Destination stars fade in and settle to a static field.
+
+Other changes use a short crossfade (outgoing layers fade out, incoming layers fade in). A set that arrives while a transition is still playing starts a new transition from the current visual (in-flight streaks and moving stars are kept) rather than snapping. Pass `0` ticks for the 0.3.0 instant behaviour.
 
 #### Data files
 
@@ -168,6 +177,7 @@ A backdrop is a named, data-driven sky. When one is set on a level it replaces t
 
 ```json
 {
+  "transition": { "duration_ticks": 60, "mode": "auto" },
   "layers": [
     { "type": "color", "color": "#000010" },
     { "type": "gradient", "top": "#000010", "horizon": "#1a0033", "bottom": "#000000" },
@@ -187,6 +197,11 @@ Layer types:
 - `stars`: static starfield. `count`, `brightness`, optional `color`, `seed`. Optional `rotate_with_time` follows the day cycle. Optional `drift` is extra rotation in degrees per second.
 - `warp`: streaks that all lie on rays from one fixed vanishing point in `direction` (default toward -Z: yaw 0 pitch 0). They travel from that point toward the viewer and grow longer and brighter as they pass, like a starfield jump. `count`, `speed`, `length`, optional `color`. Optional `spread` is the cone half-angle in degrees around that direction (default 25). Optional `direction` is `{ "yaw", "pitch" }` in degrees.
 - `body`: a textured disc. `texture` is an assets path. `size` is apparent diameter in degrees. `azimuth` and `altitude` are degrees (azimuth 0 is -Z, altitude 90 is zenith). Optional `spin` is revolutions per second. Optional `orbit_speed` (degrees per second) and `orbit_axis` (`{ "yaw", "pitch" }`, default straight up).
+
+Optional top-level `transition`:
+
+- `duration_ticks` (default 60, clamped to 0..1200) is used when `Backdrops.set(level, id)` or the set command has no explicit tick count. The incoming backdrop's value is used for a set; `clear` uses the outgoing backdrop's value, or 60 if there is none. `0` is instant.
+- `mode` is `auto` (default), `crossfade`, or `warp`. `auto` uses the star/warp morph when a warp layer is involved, and a crossfade otherwise. `crossfade` always blends. `warp` forces the morph when stars or warp are present.
 
 Layers draw in list order, back to front. Textures come from resource packs.
 
@@ -211,21 +226,23 @@ A backdrop will not show in a dimension whose type has `skybox: none`, because v
 
 ```java
 Backdrops.set(level, Identifier.parse("homebound:warp"));
+Backdrops.set(level, Identifier.parse("homebound:warp"), 80);
 Backdrops.clear(level);
+Backdrops.clear(level, 0);
 Optional<Identifier> current = Backdrops.get(level);
 boolean loaded = Backdrops.exists(Identifier.parse("homebound:warp"));
 
 BackdropEvents.listen((level, oldId, newId) -> {
-    // fired on set, clear, and first default apply
+    // fired on set, clear, and first default apply (when the assignment changes, not when the client finishes the fade)
 });
 ```
 
-`Backdrops.set` throws if the id is not loaded.
+The 0.3.0 methods `set(level, id)` and `clear(level)` are unchanged in signature. They now pick a duration from the backdrop JSON as described above. `set(level, id, transitionTicks)` and `clear(level, transitionTicks)` override that duration; `0` is instant. `Backdrops.set` throws if the id is not loaded. Listeners still fire immediately when the saved assignment changes.
 
 ```
 /workshopcore backdrop get
-/workshopcore backdrop set <id>
-/workshopcore backdrop clear
+/workshopcore backdrop set <id> [ticks]
+/workshopcore backdrop clear [ticks]
 ```
 
 Permission 2, current level. Simple Void can wrap this as `/void backdrop` later.
@@ -238,22 +255,22 @@ Builds are published to the local Maven folder `/workspace/mods/workshopcore-mav
 
 - Group: `com.workshopcraft.workshopcore`
 - Artifact id: `workshopcore-<loader>-<minecraft>`
-- Version: the library version, for example `0.3.0`
+- Version: the library version, for example `0.4.0`
 
 Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your game version and loader:
 
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.3.0`
-- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.3.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.21.1:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-1.21.1:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-1.20.1:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-forge-1.20.1:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.2:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.2:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.4.0`
+- `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.4.0`
 
-0.3.0 is published for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not published yet.
+0.4.0 is built for 26.1.2 Fabric and NeoForge. Other version nodes are configured in the build, but those artifacts are not built yet. 0.3.0 remains the last published 26.1.2 set until this version is approved.
 
 Repository:
 
@@ -269,8 +286,8 @@ repositories {
 
 ```kotlin
 dependencies {
-    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.3.0")
-    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.3.0")
+    modImplementation("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.4.0")
+    include("com.workshopcraft.workshopcore:workshopcore-fabric-26.1.2:0.4.0")
 }
 ```
 
@@ -285,7 +302,7 @@ dependencies {
     jarJar(implementation("com.workshopcraft.workshopcore:workshopcore-neoforge-26.1.2") {
         version {
             strictly("[0.1,1.0)")
-            prefer("0.3.0")
+            prefer("0.4.0")
         }
     })
 }

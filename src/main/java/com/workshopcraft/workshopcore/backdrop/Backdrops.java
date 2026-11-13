@@ -54,15 +54,42 @@ public final class Backdrops {
         return data(level).id();
     }
 
+    /**
+     * Set the backdrop, using the target definition's {@code transition.duration_ticks}
+     * or {@link BackdropTransition#DEFAULT_DURATION_TICKS} if that field is omitted.
+     * The assignment is applied immediately; the client animates over that many ticks.
+     */
     public static void set(ServerLevel level, Identifier id) {
         if (!exists(id)) {
             throw new IllegalArgumentException("Unknown backdrop " + id);
         }
-        apply(level, Optional.of(id));
+        apply(level, Optional.of(id), durationOf(id));
     }
 
+    /**
+     * Set the backdrop and tell the client to transition over {@code transitionTicks}.
+     * Zero is instant (the 0.3.0 behaviour). Values are clamped to 0..1200.
+     */
+    public static void set(ServerLevel level, Identifier id, int transitionTicks) {
+        if (!exists(id)) {
+            throw new IllegalArgumentException("Unknown backdrop " + id);
+        }
+        apply(level, Optional.of(id), transitionTicks);
+    }
+
+    /**
+     * Clear to vanilla, using the outgoing backdrop's transition duration when present.
+     */
     public static void clear(ServerLevel level) {
-        apply(level, Optional.empty());
+        apply(level, Optional.empty(), durationOf(get(level)));
+    }
+
+    /**
+     * Clear to vanilla and tell the client to transition over {@code transitionTicks}.
+     * Zero is instant.
+     */
+    public static void clear(ServerLevel level, int transitionTicks) {
+        apply(level, Optional.empty(), transitionTicks);
     }
 
     public static void onLevelLoad(ServerLevel level) {
@@ -93,7 +120,7 @@ public final class Backdrops {
         }
     }
 
-    private static void apply(ServerLevel level, Optional<Identifier> id) {
+    private static void apply(ServerLevel level, Optional<Identifier> id, int transitionTicks) {
         BackdropData data = data(level);
         Optional<Identifier> old = data.initialized() ? data.id() : Optional.empty();
         if (data.initialized() && old.equals(id)) {
@@ -101,7 +128,21 @@ public final class Backdrops {
         }
         data.assign(id);
         BackdropEvents.fire(level, old, id);
-        BackdropNetworking.syncLevel(level);
+        BackdropNetworking.syncLevel(level, clampTicks(transitionTicks));
+    }
+
+    static int durationOf(Identifier id) {
+        return durationOf(Optional.of(id));
+    }
+
+    static int durationOf(Optional<Identifier> id) {
+        return id.flatMap(Backdrops::definition)
+                .map(backdrop -> backdrop.transition().durationTicks())
+                .orElse(BackdropTransition.DEFAULT_DURATION_TICKS);
+    }
+
+    static int clampTicks(int ticks) {
+        return Math.max(0, Math.min(ticks, BackdropTransition.MAX_DURATION_TICKS));
     }
 
     private static BackdropData data(ServerLevel level) {
