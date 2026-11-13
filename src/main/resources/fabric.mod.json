@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 1,
+    "id": "${id}",
+    "version": "${version}",
+    "name": "${name}",
+    "description": "${description}",
+    "authors": [
+        "${author}"
+    ],
+    "license": "All Rights Reserved",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.workshopcraft.workshopcore.fabric.WorkshopCoreFabric"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=${loader}",
+        "minecraft": "${minecraft}",
+        "java": ">=${java}"
+    }
+}
