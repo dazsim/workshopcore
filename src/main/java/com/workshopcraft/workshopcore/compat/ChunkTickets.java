@@ -46,8 +46,8 @@ public final class ChunkTickets {
     /**
      * Isolated ticket type for this owner id. Two owners can hold the same chunk and
      * radius independently. On 26.x, register the type during your loader init with
-     * {@link Owner#register} (Workshop Core's own init also registers owners already
-     * created at that point).
+     * {@link Owner#register}. Workshop Core's init only registers its shared type,
+     * never owners.
      */
     public static Owner create(Identifier id) {
         return OWNERS.computeIfAbsent(id, Owner::new);

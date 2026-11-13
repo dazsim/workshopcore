@@ -122,7 +122,7 @@ tickets.add(level, pos, radius);
 tickets.remove(level, pos, radius);
 ```
 
-Workshop Core registers the shared type on 26.x, and any `create` owners already made at that point. Older versions do not need a registry call; `create` still returns an isolated type.
+Workshop Core's init registers only its own shared type, `workshopcore:chunk_loader`. It never registers `create` owners, so on 26.x each owner registers its own type exactly once. Older versions do not need a registry call; `create` still returns an isolated type.
 
 #### Item helpers
 
