@@ -432,6 +432,12 @@ Everything in the 1.21.1 list applies, with these further differences:
 - Datapack paths are the 1.20.1 names: `data/*/recipes`, `data/*/advancements`, `data/*/tags/items`, `data/*/tags/blocks`. Item model definitions under `assets/*/items/` are not used; the handheld model stays at `assets/workshopcore/models/item/screwdriver.json`. The screwdriver recipe uses `{ "tag": "c:iron_ingots" }` on Fabric and `{ "tag": "forge:ingots/iron" }` on Forge. The Fabric tag is shipped with `minecraft:iron_ingot` and optional pointers at `#forge:ingots/iron` and `#c:ingots/iron`.
 - Use `Ids.of(namespace, path)` instead of `Identifier.fromNamespaceAndPath` if you need a version-safe constructor. On 1.20.1 that helper uses `new ResourceLocation` (the static factory is a later Mojang method; Forge 47.4 backports it, Fabric does not). `FileToIdConverter` is also missing on Fabric 1.20.1, so Workshop Core ships a small copy for datapack scans.
 
+### Known gaps
+
+- On Fabric 1.21.1 and 1.20.1, warp transitions fade but the warp streaks do not render.
+- On 1.21.1 (Fabric and NeoForge) and 1.20.1 Fabric, custom sky gradients render much darker than on 26.x. The purple test gradient looks nearly black.
+- The 1.20.1 Forge dedicated server is verified. A production 1.20.1 Forge client has not been tested yet.
+
 ## Maven coordinates
 
 Builds are published to the local Maven folder `/workspace/mods/workshopcore-maven`.
@@ -453,7 +459,7 @@ Loaders are `fabric`, `neoforge` or `forge`. Pick the artifact that matches your
 - `com.workshopcraft.workshopcore:workshopcore-fabric-26.3:0.6.1`
 - `com.workshopcraft.workshopcore:workshopcore-neoforge-26.3:0.6.1`
 
-0.6.1 is built for all ten targets. 0.6.0 remains the last 26.1.2-only set until this version is approved. The 26.1.2 behaviour is unchanged from 0.6.0.
+0.6.1 is built for all ten targets. 0.6.0 remains available as the last 26.1.2-only set. The 26.1.2 behaviour is unchanged from 0.6.0.
 
 Repository:
 
