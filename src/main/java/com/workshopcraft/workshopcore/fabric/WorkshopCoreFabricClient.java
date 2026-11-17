@@ -5,6 +5,7 @@ import net.fabricmc.api.ClientModInitializer;
 public class WorkshopCoreFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        CtmFabricModel.register();
         //? if >=26.1 {
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
                 com.workshopcraft.workshopcore.backdrop.BackdropSyncPacket.TYPE,

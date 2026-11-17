@@ -40,6 +40,7 @@ public class WorkshopCoreNeoForgeClient {
     //?}
 
     public WorkshopCoreNeoForgeClient(IEventBus modBus) {
+        modBus.addListener(CtmNeoModel::bake);
         //? if >=26.1 {
         modBus.addListener((RegisterCustomEnvironmentEffectRendererEvent e) ->
                 e.registerSkyboxRenderer(BackdropSkybox.ID, BackdropSkybox.INSTANCE));

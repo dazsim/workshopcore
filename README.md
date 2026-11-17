@@ -2,7 +2,7 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.6.1.
+Mod id: `workshopcore`. Version 0.7.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
@@ -17,7 +17,7 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.6.1"`
+- `API_VERSION` - the API version string, currently `"0.7.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
@@ -402,6 +402,78 @@ Do not register the old item yourself. If it is already registered, Fabric `alia
 Show `Screwdrivers.item()` in your creative tab, remove your old screwdriver recipe, and point any remaining tag checks at `Screwdrivers.SCREWDRIVERS` or `c:tools/screwdriver`.
 
 
+### Connected textures
+
+Package `com.workshopcraft.workshopcore.ctm` (client code in `ctm.client`). Client only: it changes block models, not blocks. Glass and other blocks can join up into one panel with a single frame around the outside and no lines between blocks.
+
+Status in 0.7.0-alpha.1: 26.1.2 NeoForge and Fabric. The other targets are not ported yet and are listed under Known gaps.
+
+#### Opting a block in
+
+Add a client resource file at `assets/<ns>/workshopcore/connected_textures/<name>.json`, in your mod jar or a resource pack:
+
+```json
+{
+  "blocks": ["simplemachines:frame_glass", "simplemachines:clear_glass"],
+  "tiles": "simplemachines:block/ctm/frame_glass",
+  "connect": "block",
+  "hide_inner_faces": false,
+  "match": ["simplemachines:block/frame_glass"]
+}
+```
+
+- `blocks` - block ids (one string or a list). Unknown ids are skipped, so a file can name blocks from optional mods.
+- `tiles` - a texture folder, which means `<folder>/0` to `<folder>/4`, or a list of exactly five texture ids in tile order. They must be under `textures/block/` so they end up in the block atlas.
+- `connect` - when two blocks join. `"block"` (default) means the same block. `"state"` means the same block state. `"#ns:tag"` means any block in that block tag. Any other id must be a rule registered with `ConnectedTextures.registerRule`.
+- `hide_inner_faces` - optional, default false. Drops a block's face when the block on that side connects. Vanilla glass, stained glass and other `HalfTransparentBlock`s already cull these faces. Turn this on for see-through blocks that do not, otherwise the inner faces show through.
+- `match` - optional sprite ids. Only quads drawn with one of these sprites are retextured, so a framed block can keep its frame and connect only its glass. Without `match`, every axis-aligned face quad of the model is retextured.
+
+Files are read again on every resource reload (F3+T or changing packs). A file that fails to parse is logged and skipped. If a tile is missing from the atlas, a warning is logged and the block draws its normal model.
+
+A neighbour counts as joined only when its own face on that side is visible. If the block in front of it connects too, it does not join. This means an L-shaped wall keeps a border along the inside corner, and the edges of a cube keep their frame.
+
+#### Tile format (for artists)
+
+Five square tiles, all the same size (16x16 or larger), drawn like a full block face:
+
+| Tile | File | What it shows | Used where |
+|---|---|---|---|
+| 0 | `0.png` | full border on all four sides | a block on its own, usually your normal texture |
+| 1 | `1.png` | no border | the middle of a panel |
+| 2 | `2.png` | border on top and bottom only | a horizontal run |
+| 3 | `3.png` | border on left and right only | a vertical run |
+| 4 | `4.png` | no edges, just the four corner pixels | inside corners where a diagonal neighbour is missing |
+
+Each face is split into quarters. Each quarter takes the matching quarter of one tile, chosen from its two side neighbours and the diagonal between them. That gives all 47 border combinations from five tiles. Tiles are placed by block position on the face, like a vanilla full face with no rotation. Model UV rotation and `uvlock` are ignored for retextured quads, so keep the tiles symmetric or check them on each face. Animated tiles work if every tile has the same `.mcmeta`. The render layer comes from the original model, so glass that is cutout stays cutout.
+
+You only have to draw tile 0. `scripts/ctm-tiles.py` (needs Python 3 and Pillow) builds the other four from it by removing the border:
+
+```sh
+python3 scripts/ctm-tiles.py glass.png src/main/resources/assets/<ns>/textures/block/ctm/glass 1
+```
+
+The last argument is the border width in pixels (default 1). The script also copies `glass.png.mcmeta` next to each tile if there is one. Touch up tile 1 by hand if the middle pattern repeats too often.
+
+#### Java API
+
+```java
+// common init; safe on a dedicated server
+ConnectedTextures.registerRule(Identifier.fromNamespaceAndPath("simplemachines", "same_frame"),
+        (level, pos, self, otherPos, other, face) -> other.getBlock() instanceof FrameGlassBlock);
+```
+
+- `ConnectRule.connects(BlockGetter level, BlockPos pos, BlockState self, BlockPos otherPos, BlockState other, Direction face)` - true if `other` should join `self` on `face`. It is called from chunk meshing threads, so only read the level.
+- `ConnectedTextures.registerRule(Identifier, ConnectRule)` - lets resource files name the rule in `connect`. Register before resources load (mod init).
+- `ConnectedTextures.rule(Identifier)`, `ConnectedTextures.tag(TagKey<Block>)`, `ConnectedTextures.parse(String)` - look up the built-in rules: `ConnectedTextures.SAME_BLOCK` (`workshopcore:block`) and `ConnectedTextures.SAME_STATE` (`workshopcore:state`).
+
+#### How it hooks the model pipeline
+
+- NeoForge 26.x: `ModelEvent.ModifyBakingResult` wraps the block state models of listed blocks in a `DelegateBlockStateModel`. Its level-aware `collectParts` returns parts with retextured quads.
+- Fabric 26.x: a `ModelLoadingPlugin` wraps them after bake. The wrapper's renderer API `emitQuads` emits the retextured quads. It works with Indigo (Fabric API's default renderer). Other renderer API implementations such as Sodium should work but are untested.
+- Only the world model changes. Item models and blocks held or dropped look normal.
+- The wrapper uses the wrapped model's plain quads. If another mod also replaces the same block's model with custom renderer API geometry, whichever wrapper runs last wins.
+
+
 ## Version differences
 
 The public classes and method names are the same on every target. A few signatures, hook mechanisms, and datapack file paths differ where the game API has no equivalent. 26.1.2 behaviour is unchanged from 0.6.0.
@@ -436,6 +508,7 @@ Everything in the 1.21.1 list applies, with these further differences:
 
 - On Fabric 1.21.1 and 1.20.1, warp transitions fade but the warp streaks do not render.
 - On 1.21.1 (Fabric and NeoForge) and 1.20.1 Fabric, custom sky gradients render much darker than on 26.x. The purple test gradient looks nearly black.
+- Connected textures (0.7.0) are only on 26.1.2 so far. 26.2, 26.3, 1.21.1 and 1.20.1 do not apply connected texture files yet.
 - The 1.20.1 Forge dedicated server is verified. A production 1.20.1 Forge client has not been tested yet.
 
 ## Maven coordinates
