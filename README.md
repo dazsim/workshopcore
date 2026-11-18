@@ -511,6 +511,7 @@ Everything in the 1.21.1 list applies, with these further differences:
 - On Fabric 1.21.1 and 1.20.1, warp transitions fade but the warp streaks do not render.
 - On 1.21.1 (Fabric and NeoForge) and 1.20.1 Fabric, custom sky gradients render much darker than on 26.x. The purple test gradient looks nearly black.
 - Connected textures are only checked in game on 26.1.2. The other eight targets compile against each version's model API but have not been run yet.
+- The 0.6.1 Forge 1.20.1 jar is missing the mixin refmap reference and fails on a production client. Fixed in 0.7.0; bundle 0.7.0 or later on Forge 1.20.1.
 - The 1.20.1 Forge dedicated server is verified. A production 1.20.1 Forge client has not been tested yet.
 
 ## Maven coordinates
