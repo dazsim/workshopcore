@@ -162,6 +162,14 @@ def check_jar(path: Path) -> list[str]:
             if "workshopcore.mixins.json" in names:
                 errors.append("26.x NeoForge jar should not ship workshopcore.mixins.json")
 
+        refmaps = sorted(n for n in names if n.endswith("refmap.json") and "/" not in n)
+        if mixin_cfg is not None:
+            ref = mixin_cfg.get("refmap")
+            if ref is not None and ref not in names:
+                errors.append(f"workshopcore.mixins.json refmap {ref} is not in the jar")
+            for r in refmaps:
+                if r != ref:
+                    errors.append(f"jar contains {r} but workshopcore.mixins.json does not reference it")
         if mixin_cfg is not None:
             level = mixin_cfg.get("compatibilityLevel")
             if not isinstance(level, str):
