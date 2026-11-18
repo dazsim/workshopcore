@@ -406,7 +406,7 @@ Show `Screwdrivers.item()` in your creative tab, remove your old screwdriver rec
 
 Package `com.workshopcraft.workshopcore.ctm` (client code in `ctm.client`). Client only: it changes block models, not blocks. Glass and other blocks can join up into one panel with a single frame around the outside and no lines between blocks.
 
-Status in 0.7.0-alpha.1: 26.1.2 NeoForge and Fabric. The other targets are not ported yet and are listed under Known gaps.
+Available on all ten targets. The resource file format and the Java API are the same everywhere; only the model hook differs (below).
 
 #### Opting a block in
 
@@ -469,7 +469,9 @@ ConnectedTextures.registerRule(Identifier.fromNamespaceAndPath("simplemachines",
 #### How it hooks the model pipeline
 
 - NeoForge 26.x: `ModelEvent.ModifyBakingResult` wraps the block state models of listed blocks in a `DelegateBlockStateModel`. Its level-aware `collectParts` returns parts with retextured quads.
-- Fabric 26.x: a `ModelLoadingPlugin` wraps them after bake. The wrapper's renderer API `emitQuads` emits the retextured quads. It works with Indigo (Fabric API's default renderer). Other renderer API implementations such as Sodium should work but are untested.
+- NeoForge 1.21.1 and Forge 1.20.1: `ModelEvent.ModifyBakingResult` wraps the baked models in a `BakedModelWrapper`. `getModelData` works out the connections and `getQuads` reads them back from the `ModelData`.
+- Fabric 26.x: a `ModelLoadingPlugin` wraps them after bake (`modifyBlockModelAfterBake`). The wrapper's renderer API `emitQuads` emits the retextured quads.
+- Fabric 1.21.1 and 1.20.1: the same plugin uses `modifyModelAfterBake` and wraps the model in a `ForwardingBakedModel` whose `emitBlockQuads` emits the retextured quads, with the block's chunk render layer as the blend mode. It works with Indigo (Fabric API's default renderer). Other renderer API implementations such as Sodium should work but are untested.
 - Only the world model changes. Item models and blocks held or dropped look normal.
 - The wrapper uses the wrapped model's plain quads. If another mod also replaces the same block's model with custom renderer API geometry, whichever wrapper runs last wins.
 
@@ -508,7 +510,7 @@ Everything in the 1.21.1 list applies, with these further differences:
 
 - On Fabric 1.21.1 and 1.20.1, warp transitions fade but the warp streaks do not render.
 - On 1.21.1 (Fabric and NeoForge) and 1.20.1 Fabric, custom sky gradients render much darker than on 26.x. The purple test gradient looks nearly black.
-- Connected textures (0.7.0) are only on 26.1.2 so far. 26.2, 26.3, 1.21.1 and 1.20.1 do not apply connected texture files yet.
+- Connected textures are only checked in game on 26.1.2. The other eight targets compile against each version's model API but have not been run yet.
 - The 1.20.1 Forge dedicated server is verified. A production 1.20.1 Forge client has not been tested yet.
 
 ## Maven coordinates

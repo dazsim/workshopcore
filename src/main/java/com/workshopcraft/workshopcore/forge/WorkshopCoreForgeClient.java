@@ -19,6 +19,11 @@ public final class WorkshopCoreForgeClient {
     }
 
     @SubscribeEvent
+    public static void bake(net.minecraftforge.client.event.ModelEvent.ModifyBakingResult event) {
+        CtmForgeModel.bake(event);
+    }
+
+    @SubscribeEvent
     public static void overlays(RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("haze", (gui, graphics, partialTick, width, height) ->
                 HazeClient.renderTint(graphics, partialTick));

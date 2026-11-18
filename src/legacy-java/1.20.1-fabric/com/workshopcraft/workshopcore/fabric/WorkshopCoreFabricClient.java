@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 public class WorkshopCoreFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        CtmFabricModel.register();
         ClientPlayNetworking.registerGlobalReceiver(BackdropSyncPacket.TYPE.id(), (client, handler, buf, responseSender) -> {
             BackdropSyncPacket packet = BackdropSyncPacket.read(buf);
             client.execute(packet::handle);
