@@ -10,7 +10,20 @@ version = modVersion
 group = property("mod.group") as String
 base.archivesName = "${property("mod.id")}-forge-$mc"
 
+val packFormat = property("mod.pack_format") as String
+val packMeta = tasks.register("packMeta") {
+    val out = layout.buildDirectory.dir("generated/packmeta")
+    val format = packFormat
+    inputs.property("format", format)
+    outputs.dir(out)
+    doLast {
+        out.get().file("pack.mcmeta").asFile.writeText(
+            "{\n  \"pack\": {\n    \"description\": \"Workshop Core resources\",\n    \"pack_format\": $format\n  }\n}\n")
+    }
+}
+
 sourceSets.main {
+    resources.srcDir(files(layout.buildDirectory.dir("generated/packmeta")).builtBy(packMeta))
     java.exclude("com/workshopcraft/workshopcore/fabric/**", "com/workshopcraft/workshopcore/neoforge/**")
     applyOverlays(rootProject.file("."), overlayChain(mc, "forge"))
     resources.srcDir(tasks.register<Data120>("data120") {

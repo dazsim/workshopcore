@@ -21,6 +21,9 @@ dependencies {
     loomx.applyMojangMappings()
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
+    val energy = "teamreborn:energy:${property("deps.tr_energy")}"
+    modImplementation(energy) { isTransitive = false }
+    include(energy)
 }
 
 loom {
@@ -64,6 +67,7 @@ tasks {
             "minecraft" to sc.properties.get<String>("mod.mc_compat"),
             "loader" to Regex("\\d+\\.\\d+\\.\\d+").find(sc.properties.get<String>("deps.fabric_loader"))!!.value,
             "java" to requiredJava.majorVersion,
+            "tr_energy" to sc.properties.get<String>("deps.tr_energy"),
         )
         inputs.properties(props)
         filesMatching("fabric.mod.json") { expand(props) }

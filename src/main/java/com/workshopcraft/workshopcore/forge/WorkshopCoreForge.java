@@ -48,6 +48,7 @@ public class WorkshopCoreForge {
             .simpleChannel();
 
     public WorkshopCoreForge() {
+        ForgeMachines.init();
         int id = 0;
         CHANNEL.messageBuilder(BackdropSyncPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(BackdropSyncPacket::write)

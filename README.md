@@ -2,7 +2,7 @@
 
 A shared library for Workshopcraft mods. Ship it jar-in-jar inside the mods that use it so common code lives in one place.
 
-Mod id: `workshopcore`. Version 0.7.0.
+Mod id: `workshopcore`. Version 0.8.0.
 
 Targets: Minecraft 1.20.1 (Fabric, Forge), 1.21.1 (Fabric, NeoForge), 26.1.2, 26.2 and 26.3 (Fabric, NeoForge).
 
@@ -17,7 +17,7 @@ This is a library only. Do not put it in a mods folder on its own; bundle it as 
 Package `com.workshopcraft.workshopcore`.
 
 - `MOD_ID` - the mod id, `"workshopcore"`
-- `API_VERSION` - the API version string, currently `"0.7.0"`
+- `API_VERSION` - the API version string, currently `"0.8.0"`
 - `isAtLeast(String version)` - true if this library's API version is greater than or equal to `version`. Compares the first three numeric parts (`major.minor.patch`). A suffix after `-` is ignored.
 
 ```java
@@ -476,6 +476,64 @@ ConnectedTextures.registerRule(Identifier.fromNamespaceAndPath("simplemachines",
 - The wrapper uses the wrapped model's plain quads. If another mod also replaces the same block's model with custom renderer API geometry, whichever wrapper runs last wins.
 
 
+### Machines
+
+Package `com.workshopcraft.workshopcore.machine`. Part-assembled machines, a processing block entity base, an energy buffer and loader-neutral item and fluid transfer. Core ships no machines, metals or items: mods register their own chassis, cores, upgrades and parts. Available on all ten targets from 0.8.0.
+
+#### Assembly
+
+A `ChassisBlock` goes through `STEP` 0..7. Each part is fitted by hand (loose, odd step) and fixed with any `c:tools/screwdriver`:
+
+1. Core part: an item registered with `Assembly.registerCore`. It decides the machine.
+2. Control board: any item in `#workshopcore:control_boards`.
+3. Upgrades, one loose at a time, up to the core's `upgradeSlots`: items registered with `Assembly.registerUpgrade`.
+4. Panels: any item in `#workshopcore:machine_panels`.
+5. Worktop: any item in `#c:worktops`. Screwing the worktop replaces the chassis with the core's machine block and calls `WorkBlockEntity.install(MachineParts)`.
+
+Sneaking with a screwdriver takes the outermost part off. On a finished machine it drops the contents, pops the worktop and turns it back into the chassis. A plain screwdriver click on a machine toggles auto output on the clicked face. Core and tags ship empty, so a mod must add its own board and panel items to the tags.
+
+- `Assembly.registerCore(Identifier item, MachineCore)`, `registerUpgrade(Identifier item, MachineUpgrade)`, `core(ItemStack)`, `upgrade(ItemStack)`, `isPart`, `refusal`, `fit`, `screw`, `unscrew`, `disassemble`, tags `CONTROL_BOARDS`, `PANELS`, `WORKTOPS`. Item ids may be registered before the items exist.
+- `MachineCore.builder(Identifier id, Supplier<? extends Block> machine)`: `.upgradeSlots(int)` (default 2), `.drive(Drive)` (default `Drives.CRANK`), `.accepts(Predicate<MachineUpgrade>)`.
+- `MachineUpgrade.builder(Identifier id)`: `.speed(percent)`, `.storage(percent)`, `.drive(Drive)`, `.unique()`. A machine takes one drive upgrade.
+- `ChassisTier(Identifier id, int speed, int storage)`: percentages. `ChassisTier.BASIC` is 100/100.
+- `new ChassisBlock(ChassisTier, Supplier<BlockEntityType<? extends ChassisBlockEntity>>, Properties)`. Give it a self-dropping loot table; the block entity drops the fitted parts. `ChassisBlockEntity(type, pos, state)` syncs its parts to clients (`parts()`, `looseUpgrade()`).
+- `MachineParts` (record): `chassis`, `core`, `board`, `upgrades`, `panels`, `worktop`, plus `tier()`, `drive()`, `speed()`, `storage()`, `drops()`.
+
+#### Drives
+
+`Drive` has `run(machine, level, energyCost)`, `crank(machine, player)`, `level(machine)` (0..1000) and `usesEnergy()`.
+
+- `Drives.CRANK`: empty-hand use on the machine adds `CRANK_TICKS` (20) of running, up to `CRANK_MAX` (100), with a little hunger.
+- `Drives.FUEL`: burns furnace fuel from `fuelSlot()`, only while there is work. Remainders such as empty buckets stay in the slot.
+- `Drives.ENERGY`: takes `energyPerTick() * speed / 100` from the machine's `EnergyBuffer` per tick. An energy or motor upgrade is a `MachineUpgrade` with `.drive(Drives.ENERGY)`, or with its own `Drive`.
+
+#### Processing block entity
+
+`WorkBlockEntity(type, pos, state, slots, energyCapacity, maxEnergyIn)` extends `CompatContainerBlockEntity` and implements `WorldlyContainer`. Implement `isInput(slot)`, `isOutput(slot)`, `workTime(ServerLevel)` (base ticks, 0 = idle), `finishWork(ServerLevel)`, `getDefaultName()` and `createMenu(id, inventory)`. Optional: `accepts(slot, stack)`, `fuelSlot()`, `energyPerTick()` (10), `fallbackDrive()` (crank, used when the machine was placed without parts).
+
+Job time is `workTime * 100 / parts().speed()`. Every face inserts into input and fuel slots and extracts from output slots. Auto output pushes 16 items every 8 ticks through `Transfer`. Helpers: `fits`, `store`, `drive()`, `energy()`, `parts()`, `toggleOutput(Direction)`, `outputs(Direction)`, `crank(Player)`, `dropContents()`. `data` is a `ContainerData` with `DATA_PROGRESS`, `DATA_DRIVE` and `DATA_ENERGY`, each 0..1000. Saved keys: items, `parts_*`, `energy`, `progress`, `total`, `drive_ticks`, `drive_total`, `outputs`.
+
+`new MachineBlock(Supplier<BlockEntityType<? extends WorkBlockEntity>>, Properties)` gives a horizontal `FACING`, the server ticker and use handling: empty hand cranks a crank drive, otherwise (or when sneaking) it opens the menu. Give it an empty loot table, because the block entity drops the chassis, parts and contents.
+
+Call `Machines.expose(Supplier<BlockEntityType<? extends WorkBlockEntity>>)` from mod init for every machine type. NeoForge needs it to register the capabilities; on the other loaders it does nothing harmful.
+
+#### Energy and transfer
+
+`EnergyBuffer(capacity, maxIn, maxOut, onChange)`: public `capacity`, `maxIn`, `maxOut`, `energy`; `receive`, `extract`, `use`, `pushTo`, `pushToNeighbours` (round robin), `permille`, `load` and `save`. The static hooks `EnergyBuffer.pusher` and `EnergyBuffer.lookup` are installed by the loader. There are no cables.
+
+`Transfer` has the same hook shape as Simple Machines' `pipe.Transfer`: `lookup`, `mover`, `probe`, `fluidLookup`, `fluidMover`, `fluidProbe`, `itemFluid` and `invalidator`, with `push`, `pull`, `pushFluid` and `pullFluid` helpers. Fluid amounts are in mB.
+
+| Loader | Machine items | Machine energy | Transfer backend |
+|---|---|---|---|
+| NeoForge 26.x | `Capabilities.Item.BLOCK` (`WorldlyContainerWrapper`) | `Capabilities.Energy.BLOCK` (FE) | `ResourceHandler` transfer API |
+| NeoForge 1.21.1 | `Capabilities.ItemHandler.BLOCK` (`SidedInvWrapper`) | `Capabilities.EnergyStorage.BLOCK` (FE) | `IItemHandler` / `IFluidHandler` |
+| Forge 1.20.1 | `WorkBlockEntity.getCapability` (`SidedInvWrapper`) | `ForgeCapabilities.ENERGY` (FE) | `IItemHandler` / `IFluidHandler` |
+| Fabric (all) | Fabric's `Container` fallback | Team Reborn Energy `EnergyStorage.SIDED` fallback | Fabric Transfer API (81 droplets = 1 mB) |
+
+On Fabric, Team Reborn Energy is bundled inside the Workshop Core jar (3.0.0 on 1.20.1, 4.1.0 on 1.21.1, 5.0.0 on 26.x) and `fabric.mod.json` depends on it, as Simple Machines does. Consumers do not need to add it unless they call its API themselves.
+
+Fuel: `Fuels.isFuel(level, stack)`, `Fuels.burnTime(ServerLevel, stack, blockEntity)` and `Fuels.consume(stack)` work on every version. On 26.3 they read the `cooking_fuel` item component.
+
 ## Version differences
 
 The public classes and method names are the same on every target. A few signatures, hook mechanisms, and datapack file paths differ where the game API has no equivalent. 26.1.2 behaviour is unchanged from 0.6.0.
@@ -485,6 +543,7 @@ The public classes and method names are the same on every target. A few signatur
 These are internal renderer and reload differences only. Calling code that uses `Backdrops`, `Haze`, `HazardProtection`, `HazardDamage`, or `Screwdrivers` does not need to change.
 
 - 26.2 uses newer GPU primitive, buffer-slice, and render-pass APIs inside `BackdropRenderer`.
+- 26.3 removes `Block.codec()`, so `ChassisBlock` and `MachineBlock` only override it below 26.3. Fuel uses the `cooking_fuel` component.
 - 26.3 moves those rendering types to `com.mojang.renderpearl` packages, uses `pose.rotate` and compiled pipelines, and on Fabric scans backdrop and hazard datapacks through `ResourceScan` because vanilla no longer exposes `SimpleJsonResourceReloadListener.scanDirectory`. Cloud hiding on Fabric 26.3 hooks `CloudRenderer` instead of `LevelRenderer.addCloudsPass`.
 
 ### 1.21.1
@@ -494,6 +553,7 @@ These are internal renderer and reload differences only. Calling code that uses 
 - Commands check `source.hasPermission(2)` instead of `Permissions.COMMANDS_GAMEMASTER`.
 - `Ids.of(ResourceKey)` uses `location()` instead of `identifier()`.
 - Networking still uses `CustomPacketPayload` and `StreamCodec`. Fabric registers payloads on `PayloadTypeRegistry.playS2C()`, reload listeners on `ResourceManagerHelper`, and world events on `ServerWorldEvents` / `ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD`. NeoForge uses `AddReloadListenerEvent` and `RegisterPayloadHandlersEvent`.
+- Machines: `ChassisBlock` overrides `useItemOn` with the 1.21.1 `ItemInteractionResult` signature and both machine blocks force `RenderShape.MODEL`. Fuel comes from `getBurnTime(RecipeType.SMELTING)` on NeoForge and `AbstractFurnaceBlockEntity.getFuel()` on Fabric.
 
 ### 1.20.1
 
@@ -504,6 +564,7 @@ Everything in the 1.21.1 list applies, with these further differences:
 - `KeepToolRecipe` uses the 1.20.1 serializer shape (`fromJson` / `fromNetwork` / `toNetwork`, `CraftingContainer`, `RegistryAccess`) and carries the recipe id on the recipe.
 - `Screwdrivers.alias` on Forge remaps through `MissingMappingsEvent`. `Screwdrivers.convert` copies count and NBT onto a new stack rather than calling `transmuteCopy`. Gear wear calls `ItemStack.hurtAndBreak` with `broadcastBreakEvent`.
 - Datapack paths are the 1.20.1 names: `data/*/recipes`, `data/*/advancements`, `data/*/tags/items`, `data/*/tags/blocks`. Item model definitions under `assets/*/items/` are not used; the handheld model stays at `assets/workshopcore/models/item/screwdriver.json`. The screwdriver recipe uses `{ "tag": "c:iron_ingots" }` on Fabric and `{ "tag": "forge:ingots/iron" }` on Forge. The Fabric tag is shipped with `minecraft:iron_ingot` and optional pointers at `#forge:ingots/iron` and `#c:ingots/iron`.
+- Machines: Forge exposes items and energy through `WorkBlockEntity.getCapability` (cached in `ForgeMachines.Caps`) and does not need `Machines.expose`. Stack matching uses `isSameItemSameTags`.
 - Use `Ids.of(namespace, path)` instead of `Identifier.fromNamespaceAndPath` if you need a version-safe constructor. On 1.20.1 that helper uses `new ResourceLocation` (the static factory is a later Mojang method; Forge 47.4 backports it, Fabric does not). `FileToIdConverter` is also missing on Fabric 1.20.1, so Workshop Core ships a small copy for datapack scans.
 
 ### Known gaps
@@ -511,6 +572,8 @@ Everything in the 1.21.1 list applies, with these further differences:
 - On Fabric 1.21.1 and 1.20.1, warp transitions fade but the warp streaks do not render.
 - On 1.21.1 (Fabric and NeoForge) and 1.20.1 Fabric, custom sky gradients render much darker than on 26.x. The purple test gradient looks nearly black.
 - Connected textures are only checked in game on 26.1.2. The other eight targets compile against each version's model API but have not been run yet.
+- 0.7.0 and earlier Forge 1.20.1 jars have no `pack.mcmeta`, so Forge logs "Missing metadata in pack mod:workshopcore" and skips the mod's resources, which also hides the screwdriver model. Fixed in 0.8.0; `check-jars.sh` now checks for it.
+- Machines are only compile checked. Nothing in `machine` has been run in game yet.
 - The 0.6.1 Forge 1.20.1 jar is missing the mixin refmap reference and fails on a production client. Fixed in 0.7.0; bundle 0.7.0 or later on Forge 1.20.1.
 - The 1.20.1 Forge dedicated server is verified. A production 1.20.1 Forge client has not been tested yet.
 

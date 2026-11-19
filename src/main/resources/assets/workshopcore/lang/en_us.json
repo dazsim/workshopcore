@@ -1,5 +1,26 @@
 {
   "item.workshopcore.screwdriver": "Screwdriver",
   "tag.item.workshopcore.screwdrivers": "Screwdrivers",
-  "tag.block.workshopcore.screwdriver_rotatable": "Rotated by a screwdriver"
+  "tag.block.workshopcore.screwdriver_rotatable": "Rotated by a screwdriver",
+  "message.workshopcore.assembly.screw": "Fix it with a screwdriver",
+  "message.workshopcore.assembly.wrong_part": "That part does not go on yet",
+  "message.workshopcore.assembly.fix_loose": "Screw in the loose upgrade first",
+  "message.workshopcore.assembly.upgrades_full": "No room for another upgrade",
+  "message.workshopcore.assembly.upgrade_refused": "This machine does not take that upgrade",
+  "message.workshopcore.assembly.one_drive": "A machine takes only one drive",
+  "message.workshopcore.assembly.duplicate": "That upgrade is already fitted",
+  "message.workshopcore.assembly.need_core": "Fit a machine core",
+  "message.workshopcore.assembly.need_board": "Fit a control board",
+  "message.workshopcore.assembly.need_panels": "Fit upgrades or panels",
+  "message.workshopcore.assembly.need_worktop": "Fit a worktop",
+  "message.workshopcore.machine.output_on": "Auto output on: %s",
+  "message.workshopcore.machine.output_off": "Auto output off: %s",
+  "direction.workshopcore.down": "bottom",
+  "direction.workshopcore.up": "top",
+  "direction.workshopcore.north": "north",
+  "direction.workshopcore.south": "south",
+  "direction.workshopcore.west": "west",
+  "direction.workshopcore.east": "east",
+  "tag.item.workshopcore.control_boards": "Machine control boards",
+  "tag.item.workshopcore.machine_panels": "Machine panels"
 }

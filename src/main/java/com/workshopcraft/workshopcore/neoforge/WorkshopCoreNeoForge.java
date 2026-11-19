@@ -17,6 +17,7 @@ public class WorkshopCoreNeoForge {
         initBackdrops(modBus);
         initHazards(modBus);
         initScrewdrivers(modBus);
+        NeoMachines.init(modBus);
         LoggerFactory.getLogger(WorkshopCore.MOD_ID).info("Workshop Core {}", WorkshopCore.API_VERSION);
     }
 

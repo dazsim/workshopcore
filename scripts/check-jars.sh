@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Verify Workshop Core dist jars: no leftover Stonecutter comments, valid
-# json/toml, mixin metadata, mixin classes, and compatibilityLevel.
+# json/toml, mixin metadata, mixin classes, compatibilityLevel, Forge pack.mcmeta,
+# the screwdriver item model and the bundled Team Reborn Energy jar on Fabric.
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
@@ -161,6 +162,26 @@ def check_jar(path: Path) -> list[str]:
         else:
             if "workshopcore.mixins.json" in names:
                 errors.append("26.x NeoForge jar should not ship workshopcore.mixins.json")
+
+        if loader == "forge":
+            meta = read_zip(zf, "pack.mcmeta")
+            if meta is None:
+                errors.append("Forge jar has no pack.mcmeta (resource pack fails to load)")
+            elif not isinstance((json.loads(meta.decode("utf-8")).get("pack") or {}).get("pack_format"), int):
+                errors.append("pack.mcmeta has no integer pack.pack_format")
+        if "assets/workshopcore/textures/item/screwdriver.png" in names:
+            model = "assets/workshopcore/models/item/screwdriver.json"
+            if mc.startswith("1.") and model not in names:
+                errors.append(f"missing {model}")
+            if not mc.startswith("1.") and "assets/workshopcore/items/screwdriver.json" not in names:
+                errors.append("missing assets/workshopcore/items/screwdriver.json")
+        if loader == "fabric":
+            nested = [n for n in names if n.startswith("META-INF/jars/") and "energy" in n]
+            if not nested:
+                errors.append("Team Reborn Energy is not bundled under META-INF/jars/")
+            meta = json.loads((read_zip(zf, "fabric.mod.json") or b"{}").decode("utf-8"))
+            if "team_reborn_energy" not in (meta.get("depends") or {}):
+                errors.append("fabric.mod.json does not depend on team_reborn_energy")
 
         refmaps = sorted(n for n in names if n.endswith("refmap.json") and "/" not in n)
         if mixin_cfg is not None:

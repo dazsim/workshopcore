@@ -30,6 +30,7 @@ public class WorkshopCoreFabric implements ModInitializer {
         initBackdrops();
         initHazards();
         initScrewdrivers();
+        FabricMachines.init();
         LoggerFactory.getLogger(WorkshopCore.MOD_ID).info("Workshop Core {}", WorkshopCore.API_VERSION);
     }
 
